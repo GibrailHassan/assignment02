@@ -6,6 +6,7 @@ reinforcement learning algorithms.
 """
 
 from agents import AbstractAgent
+from typing import Tuple, Any, TYPE_CHECKING
 
 
 # Definition of the BasicAgent class
@@ -15,13 +16,15 @@ class BasicAgent(AbstractAgent):
     of the angle to the target, without reinforcement learning.
     """
 
-    def __init__(self, state_shape, action_shape):
+    def __init__(
+        self, state_shape: Tuple[int, ...], action_shape: Tuple[int, ...] | int
+    ) -> None:
         """
         Initializes the BasicAgent with the state and action space shapes.
 
         Args:
             state_shape (tuple): The shape of the state space.
-            action_shape (tuple): The shape of the action space.
+            action_shape (tuple | int): The shape of the action space.
         """
         super().__init__(state_shape, action_shape)
 
