@@ -1,0 +1,28 @@
+[project]
+name = "aulearn25"
+version = "1.0.1"
+requires-python = ">=3.13"
+description = "Python Environment for Autonomous Learning course in 2025 from INS, CAU Kiel"
+authors = [
+    { name = "Nikita Smirnov", email = "nsm@informatik.uni-kiel.de" },
+    { name = "Connor Schönberner", email = "cos@informatik.uni-kiel.de" },
+]
+
+dependencies = [
+    "protobuf==3.20.0",
+    "pysc2",
+    "numpy",
+    "pandas",
+    "gym>=0.26.0",
+    "gymnasium",
+    "scikit-learn",
+    "seaborn",
+    "matplotlib",
+    "tensorboard",
+    "torch-tb-profiler",
+    "absl-py",
+    "torch",
+]
+
+[tool.uv.sources]
+pysc2 = { git = "https://github.com/ConnorObrian/pysc2.git" }
