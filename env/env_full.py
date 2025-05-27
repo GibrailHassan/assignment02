@@ -4,63 +4,88 @@ import gym
 from pysc2.env import sc2_env
 from pysc2.lib import actions, features
 
-from env.utils import calc_target_position, calc_direction_and_distance_from_action, preprocess_channels
+from env.utils import (
+    calc_target_position,
+    calc_direction_and_distance_from_action,
+    preprocess_channels,
+)
 
 # pysc2 constants, do not touch
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
-_PLAYER_FRIENDLY = 1 # marine
+_PLAYER_FRIENDLY = 1  # marine
 _FUNCTIONS = actions.FUNCTIONS
 
 ACTION_DIRECTION = {
-    0: 'up_left',
-    1: 'up',
-    2: 'up_right',
-    3: 'right',
-    4: 'down_right',
-    5: 'down',
-    6: 'down_left',
-    7: 'left'
+    0: "up_left",
+    1: "up",
+    2: "up_right",
+    3: "right",
+    4: "down_right",
+    5: "down",
+    6: "down_left",
+    7: "left",
 }
 
+
 class MoveToBeaconEnv(gym.Env):
-    def __init__(self, distance_range=8, screen_size=64, step_mul=8, is_visualize=False):
+    def __init__(
+        self, distance_range=8, screen_size=64, step_mul=8, is_visualize=False
+    ):
         self.screen_size = screen_size
         self.distance_range = distance_range
         self.distance_delta = math.floor(screen_size / distance_range)
-        
+
         # pysc2 env
         self._env = sc2_env.SC2Env(
-                map_name="MoveToBeacon",
-                players=[sc2_env.Agent(sc2_env.Race.terran)],
-                agent_interface_format=features.AgentInterfaceFormat(
-                    feature_dimensions=features.Dimensions(screen=screen_size,
-                                                           minimap=screen_size),
-                    use_feature_units=True
+            map_name="MoveToBeacon",
+            players=[sc2_env.Agent(sc2_env.Race.terran)],
+            agent_interface_format=features.AgentInterfaceFormat(
+                feature_dimensions=features.Dimensions(
+                    screen=screen_size, minimap=screen_size
                 ),
-                step_mul=step_mul,
-                game_steps_per_episode=0,
-                visualize=is_visualize
+                use_feature_units=True,
+            ),
+            step_mul=step_mul,
+            game_steps_per_episode=0,
+            visualize=is_visualize,
         )
-        
+
         # action is represented as a tuple (direction, distance).
         # However DQNs and some PGs cannot work with MultiDiscrete spaces, so we need to flatten them to a Discrete space
-        self.action_space = gym.spaces.Discrete(self.distance_range * len(ACTION_DIRECTION))
-        self.observation_space = gym.spaces.Box(low=0, high=_PLAYER_RELATIVE_SCALE, shape=(2, screen_size, screen_size), dtype=np.int32)
+        self.action_space = gym.spaces.Discrete(
+            self.distance_range * len(ACTION_DIRECTION)
+        )
+        self.observation_space = gym.spaces.Box(
+            low=0,
+            high=_PLAYER_RELATIVE_SCALE,
+            shape=(2, screen_size, screen_size),
+            dtype=np.int32,
+        )
 
     def step(self, action):
         self.last_action = action
         # calculate the target marine position depending on the selected action
-        direction, distance = calc_direction_and_distance_from_action(action, self.distance_range, self.distance_delta)
-        new_x, new_y = calc_target_position(self.marine_pos[0], self.marine_pos[1], ACTION_DIRECTION[direction], distance, self.screen_size)
+        direction, distance = calc_direction_and_distance_from_action(
+            action, self.distance_range, self.distance_delta
+        )
+        new_x, new_y = calc_target_position(
+            self.marine_pos[0],
+            self.marine_pos[1],
+            ACTION_DIRECTION[direction],
+            distance,
+            self.screen_size,
+        )
         self.marine_pos = [new_x, new_y]
-        
+
         # perform pysc2 action
         if _FUNCTIONS.Move_screen.id in self._obs.observation.available_actions:
-            self._obs = self._env.step([_FUNCTIONS.Move_screen("now", self.marine_pos)])[0]
+            self._obs = self._env.step(
+                [_FUNCTIONS.Move_screen("now", self.marine_pos)]
+            )[0]
         else:
             self._obs = self._env.step([_FUNCTIONS.select_army("select")])[0]
-        
+
         # MDP
         self.state = self._get_state()
         self.reward = self._obs.reward
@@ -70,10 +95,10 @@ class MoveToBeaconEnv(gym.Env):
     def reset(self):
         # select the army and get the initial observation
         self._obs = self._env.step([_FUNCTIONS.select_army("select")])[0]
-        
+
         # get the initial coordinates of a marine from the observation
         self._set_marine_position()
-        
+
         # default values for MDP parameters
         self.last_action = None
         self.reward = 0

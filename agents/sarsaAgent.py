@@ -38,22 +38,22 @@ class SARSAAgent(AbstractAgent):
     def random_action(self):
         return np.random.randint(self.Q_table.shape[2])
 
-    def q_of_state(self, state:np.ndarray) -> torch.Tensor:
+    def q_of_state(self, state: np.ndarray) -> torch.Tensor:
         return self.Q_table[state[0], state[1]]
 
     def get_action(self, state):
         # Explore: choose random action based on epsilon probability
         if random.random() < self.epsilon:
             return self.random_action()
-        
+
         # Exploit: choose best action based on Q values
         q_values = self.q_of_state(state)
         best_action = q_values.argmax().item()
-        
+
         # If all Q values are 0, choose a random action
         if q_values[best_action] == 0:
             return self.random_action()
-        
+
         return best_action
 
     def update(self, state, action, reward, next_state, next_action, done):
@@ -69,24 +69,21 @@ class SARSAAgent(AbstractAgent):
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
             epsilon = self.epsilon
             print(self.epsilon)
-            
+
         return epsilon
-        
 
     def save_model(self, path, filename="qlagent"):
         os.makedirs(path, exist_ok=True)
         # Save directly as PyTorch tensor
         torch.save(self.q_table, os.path.join(path, f"{filename}.pt"))
-    
+
     @classmethod
     def load_model(cls, path, filename="qlagent"):
         pt_path = os.path.join(path, f"{filename}.pt")
-        
 
         # Create an instance of the class
         instance = cls(state_shape=(0,), action_shape=())  # Temporary values
-        
+
         # Load the PyTorch tensor
         instance.q_table = torch.tensor(torch.load(pt_path, weights_only=False))
         return instance
-

@@ -1,10 +1,11 @@
 from agents import AbstractAgent
 
+
 class BasicAgent(AbstractAgent):
     """
     Basic dummy agent that selects the action based on the straightforward angle calculation, no RL
     """
-    
+
     def __init__(self, state_shape, action_shape):
         super().__init__(state_shape, action_shape)
 
@@ -24,10 +25,10 @@ class BasicAgent(AbstractAgent):
 
     def update(self, state, action, reward, next_state, done):
         pass
-    
+
     def save_model(self, path, filename):
         pass
-    
+
     @classmethod
     def load_model(cls, path, filename):
         pass

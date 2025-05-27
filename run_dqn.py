@@ -15,18 +15,12 @@ env = MoveToBeaconDiscreteEnv(
     distance=1,
     screen_size=32,
     step_mul=8,
-    is_visualize=False
+    is_visualize=False,
 )
 
-agent = DQNAgent(  
-    state_shape=env.state_shape,
-    action_shape=env.action_shape)
+agent = DQNAgent(state_shape=env.state_shape, action_shape=env.action_shape)
 
-runner = Runner(
-    agent=agent,
-    env=env,
-    is_training=True
-)
+runner = Runner(agent=agent, env=env, is_training=True)
 
 # key point: with basic agent it should be a special run_basic as it checks all actions to decide
 runner.run_dqn(episodes=700, c=250)

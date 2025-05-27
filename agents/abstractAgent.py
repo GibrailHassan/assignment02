@@ -1,7 +1,7 @@
 import abc
 
-class AbstractAgent(metaclass=abc.ABCMeta):
 
+class AbstractAgent(metaclass=abc.ABCMeta):
     """
     Abstract class defining the structure and behavior of an RL agent.
     """
@@ -9,7 +9,7 @@ class AbstractAgent(metaclass=abc.ABCMeta):
     def __init__(self, state_shape, action_shape):
         self.state_shape = state_shape
         self.action_shape = action_shape
-   
+
     @abc.abstractmethod
     def get_action(self, state):
         """

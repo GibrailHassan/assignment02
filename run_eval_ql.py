@@ -1,4 +1,3 @@
-from pyexpat import model
 import sys
 from absl import flags
 
@@ -18,7 +17,7 @@ env = MoveToBeaconDiscreteEnv(
     distance=1,
     screen_size=32,
     step_mul=8,
-    is_visualize=False
+    is_visualize=False,
 )
 
 model_path = "models/250508_0748_QLearningAgent"
@@ -27,10 +26,6 @@ agent = QLearningAgent.load_model(model_path)
 agent.epsilon = agent.epsilon_min
 
 
-runner = Runner(
-    agent=agent,
-    env=env,
-    is_training=False
-)
+runner = Runner(agent=agent, env=env, is_training=False)
 
 runner.run_ql(100)
