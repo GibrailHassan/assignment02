@@ -5,7 +5,7 @@ Experiment runner for training a DQN agent with a CNN on the
 Full Move to Beacon environment.
 
 This script sets up the environment, agent, and runner with appropriate
-hyperparameters for this more complex, image-based task. [cite: 55]
+hyperparameters for this more complex, image-based task. 
 """
 
 import sys
