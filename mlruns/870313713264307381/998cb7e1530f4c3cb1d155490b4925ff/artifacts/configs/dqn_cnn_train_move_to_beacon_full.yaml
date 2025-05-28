@@ -1,0 +1,43 @@
+# configs/dqn_cnn_train_move_to_beacon_full.yaml
+#
+# Trains a DQN agent with a Convolutional Neural Network (CNN)
+# on the MoveToBeaconEnv (full visual features).
+
+experiment_name: "DQN (CNN) on MoveToBeacon (Full Visual)"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconEnv" # Uses raw screen features.
+  params:
+    distance_range: 8 # Number of discrete distances for actions.
+    screen_size: 32 # Screen resolution (e.g., 32x32).
+    step_mul: 8
+    is_visualize: false
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent"
+  params:
+    use_cnn:
+      true # CRITICAL: Set to true to use the CNN.
+      # If using the newer network factory:
+      # network_name: "CNN"
+      # network_params: {} # CNN architecture is defined in CNNModel
+
+    # Common DQN Hyperparameters
+    batch_size: 32
+    learning_rate: 0.00025 # CNNs often benefit from smaller learning rates.
+    discount_factor: 0.99
+    epsilon: 1.0
+    epsilon_decay: 0.000009 # Linear decay: (1.0 - 0.1) / 100,000 steps.
+    epsilon_min: 0.1
+    target_update_freq: 1000
+    memory_capacity: 100000
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 5000 # Visual environments often require more training.
+  is_training: true
+  tensorboard_log_dir: "./logs" # Consider specific subdirs, e.g., "./logs/dqn_mtb_cnn"
+  model_save_dir: "./models"
+  save_model_each_episode_num: 200

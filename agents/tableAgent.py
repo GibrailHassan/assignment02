@@ -34,8 +34,11 @@ class TableBasedAgent(AbstractAgent):
         epsilon: float = 1.0,
         epsilon_decay: float = 0.995,
         epsilon_min: float = 0.1,
+        **kwargs: Any,  # Added to accept and ignore extra params like is_training
     ):
-        super().__init__(observation_space, action_space)
+        super().__init__(
+            observation_space, action_space
+        )  # AbstractAgent.__init__ doesn't take kwargs
 
         self.learning_rate: float = learning_rate
         self.discount_factor: float = discount_factor
@@ -43,7 +46,6 @@ class TableBasedAgent(AbstractAgent):
         self.epsilon_decay: float = epsilon_decay
         self.epsilon_min: float = epsilon_min
 
-        # state_dims represents the size of each dimension for Q-table indexing
         state_dims_for_q_table = (
             observation_space.high - observation_space.low + 1
         ).astype(int)
@@ -51,13 +53,10 @@ class TableBasedAgent(AbstractAgent):
         q_table_shape = tuple(state_dims_for_q_table) + (num_actions,)
         self.q_table: torch.Tensor = torch.zeros(q_table_shape)
 
-        # index_offset is used to map environment states (which can be negative)
-        # to non-negative Q-table indices.
         self.index_offset = -observation_space.low.astype(int)
-        print(f"Initialized Q-table with shape: {q_table_shape}")
+        # print(f"Initialized Q-table with shape: {q_table_shape}") # Already printed by children
 
     def _get_q_table_indices(self, state: np.ndarray) -> tuple:
-        # Apply offset and convert to integer tuple for indexing
         indices = tuple((state + self.index_offset).astype(int))
         return indices
 
@@ -80,29 +79,39 @@ class TableBasedAgent(AbstractAgent):
         done: bool,
         **kwargs: Any,
     ) -> None:
-        # This method must be implemented by child classes (QLearningAgent, SARSAAgent)
         raise NotImplementedError
 
     def on_episode_start(self) -> None:
-        # Hook for logic at the start of an episode (e.g., resetting agent's episode-specific state)
         pass
 
     def on_episode_end(self) -> None:
-        # Hook for logic at the end of an episode (e.g., decaying epsilon)
+        # Only decay epsilon if the agent is set to training mode (relevant for DQNAgent, good practice here too)
+        # Assuming an 'is_training' attribute might be set by some agents, or rely on external call context.
+        # For TableBasedAgent, epsilon decay is usually per episode.
+        # We can check if an 'is_training' attribute exists from kwargs or is set by a child.
+        # For now, we'll assume if on_episode_end is called, it's part of a training loop where decay is desired.
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
     def get_update_info(self) -> Dict[str, float]:
-        # Returns agent-specific information for logging by the runner
         return {"epsilon": self.epsilon}
 
-    def save_model(self, path: str, filename: str = "q_table.pt") -> None:
+    def save_model(self, path: str, filename: str = "q_table.pt") -> str:  # Return path
         os.makedirs(path, exist_ok=True)
         model_path: str = os.path.join(path, filename)
-        # Save both the Q-table and the index_offset needed for correct loading
         torch.save(
             {"q_table": self.q_table, "index_offset": self.index_offset}, model_path
         )
-        print(f"Q-table saved to {model_path}")
+        print(f"Q-table saved locally to {model_path}")
+
+        if mlflow.active_run():
+            try:
+                mlflow.log_artifact(model_path, artifact_path="q_table_models")
+                print(
+                    f"Q-table also logged as MLflow artifact to 'q_table_models/{filename}'."
+                )
+            except Exception as e:
+                print(f"Warning: Failed to log Q-table to MLflow: {e}")
+        return model_path
 
     @classmethod
     def load_model(
@@ -110,58 +119,34 @@ class TableBasedAgent(AbstractAgent):
     ) -> T:
         model_path: str = os.path.join(path, filename)
 
-        # Explicitly set weights_only=False as the saved file contains more than just weights
-        # (it contains a dictionary with q_table and index_offset, which are NumPy arrays when saved by older PyTorch)
-        # and was likely saved with an older PyTorch version or without weights_only=True.
         data = torch.load(model_path, weights_only=False)
 
         q_table = data["q_table"]
-        index_offset = data[
-            "index_offset"
-        ]  # This is a NumPy array, e.g., array([10, 10])
+        index_offset = data["index_offset"]
 
-        # Reconstruct the observation_space for the agent
-        # The shape of an observation is the number of dimensions in the state vector.
-        # This can be derived from the length of the index_offset array.
-        observation_actual_shape: tuple = (
-            index_offset.shape
-        )  # e.g., (2,) for a 2D state vector
-
-        # 'low' bounds for the observation space
-        low = -index_offset  # e.g., array([-10, -10])
-
-        # 'high' bounds for the observation space
-        # state_dims_for_q_table_sizes = np.array(q_table.shape[:-1]) # e.g., array([21, 21])
-        # high_corrected = low + state_dims_for_q_table_sizes - 1 # e.g., array([10, 10])
-
-        # A more direct way to get high assuming symmetric space around 0 for index_offset
-        # If observation_space.low was [-10,-10] and observation_space.high was [10,10]
-        # then index_offset is [10,10].
-        # state_dims_for_q_table = (high - low + 1)
-        # high = state_dims_for_q_table - 1 + low
-        # high = (q_table.shape[:-1]) - 1 - index_offset # This seems more direct
+        observation_actual_shape: tuple = index_offset.shape
+        low = -index_offset
         q_table_state_dims_sizes = np.array(q_table.shape[:-1])
         high_corrected = q_table_state_dims_sizes - 1 - index_offset
 
-        # Create the gym.spaces.Box object
-        # The 'shape' argument must match the shape of 'low' and 'high', and represent one observation.
         observation_space = gym.spaces.Box(
             low=low, high=high_corrected, shape=observation_actual_shape, dtype=np.int32
         )
-
-        # Reconstruct the action_space
         action_space = gym.spaces.Discrete(q_table.shape[-1])
 
-        # Update kwargs with the reconstructed spaces for agent initialization
-        kwargs["observation_space"] = observation_space
-        kwargs["action_space"] = action_space
+        # Ensure these are passed to the constructor
+        kwargs_for_init = kwargs.copy()  # Avoid modifying original kwargs dict
+        kwargs_for_init["observation_space"] = observation_space
+        kwargs_for_init["action_space"] = action_space
 
-        # Create the agent instance
-        instance: T = cls(**kwargs)
+        # Remove params that might not be accepted by __init__ if they were just for load_model
+        # For TableBasedAgent, most params are part of __init__ or handled by **kwargs
 
-        # Assign the loaded Q-table and index_offset
+        instance: T = cls(**kwargs_for_init)
+
         instance.q_table = q_table
-        instance.index_offset = index_offset  # Ensure the instance has this attribute
+        # Ensure the loaded instance also gets the index_offset
+        instance.index_offset = index_offset
 
         print(f"Q-table loaded from {model_path}")
 

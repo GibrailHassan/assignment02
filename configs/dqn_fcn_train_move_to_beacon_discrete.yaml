@@ -1,7 +1,8 @@
 # configs/dqn_fcn_train_move_to_beacon_discrete.yaml
 #
 # Trains a DQN agent with a Fully Connected Network (MLP)
-# on the MoveToBeaconDiscreteEnv (vector-based state).
+# on the MoveToBeaconDiscreteEnv (vector-based state),
+# using the modular network configuration.
 
 experiment_name: "DQN (FCN/MLP) on MoveToBeacon (Discrete)"
 
@@ -9,39 +10,45 @@ experiment_name: "DQN (FCN/MLP) on MoveToBeacon (Discrete)"
 environment:
   name: "MoveToBeaconDiscreteEnv"
   params:
-    distance_discrete_range: 10 # Discretization levels for state.
-    distance: 1 # Movement distance per step.
-    screen_size: 32 # Screen resolution.
-    step_mul: 8 # Game steps per agent action.
-    is_visualize: false # Set to true to watch training (slows it down).
+    distance_discrete_range: 10
+    distance: 1 # This param was in the original run_dqn.py for this env
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false
 
 # --- Agent Configuration ---
 agent:
   name: "DQNAgent"
   params:
-    use_cnn:
-      false # CRITICAL: Set to false to use the MLP/FCN.
-      # If using the newer network factory:
-      # network_name: "MLP"
-      # network_params:
-      #   hidden_layers: [64, 64] # Example MLP architecture
-
-    # Common DQN Hyperparameters
-    batch_size: 32
-    learning_rate: 0.001
+    # Agent-specific algorithm params
+    enable_ddqn: false # Set to true for Double DQN
+    learning_rate: 0.001 
     discount_factor: 0.99
-    epsilon: 1.0 # Initial exploration rate.
-    epsilon_decay:
-      0.00001 # Linear decay per step (adjust based on total steps).
-      # Example: (1.0 - 0.1) / 90000 steps for 90k decay period.
-    epsilon_min: 0.1 # Minimum exploration rate.
-    target_update_freq: 1000 # Steps between target network updates.
-    memory_capacity: 50000
+    initial_epsilon: 1.0
+    epsilon_decay_rate: 0.00001 # Linear decay per step: (1.0 - 0.1) / 90000 steps
+    epsilon_min: 0.1
+    target_update_freq: 250    # From original run_dqn.py (param 'c')
+    memory_capacity: 50000     # Example, adjust as needed
+    batch_size: 32             # Example, adjust as needed
+    
+    # Network configuration for the online_network (target network will be identical)
+    # This is used by DQNAgent.__init__ when creating networks via dependency injection.
+    online_network_config:
+      name: "MLPNetwork"  # Registered name in networks.factory
+      params: # Parameters for MLPNetwork constructor in networks/architectures.py
+        hidden_layers: [64, 64] # Default MLP architecture from original NN_model.py
+    
+    # network_config is used by DQNAgent.load_model to reconstruct network architecture
+    # It should match online_network_config for consistency if loading this trained model.
+    network_config: 
+      name: "MLPNetwork"
+      params:
+        hidden_layers: [64, 64]
 
 # --- Runner Configuration ---
 runner:
-  total_episodes: 1000 # Total episodes for training.
+  total_episodes: 700 # From original run_dqn.py
   is_training: true
   tensorboard_log_dir: "./logs"
   model_save_dir: "./models"
-  save_model_each_episode_num: 100 # Frequency of saving model checkpoints.
+  save_model_each_episode_num: 100

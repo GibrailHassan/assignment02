@@ -8,7 +8,8 @@ The RandomAgent selects actions randomly from the available action space.
 import os
 from typing import Any, Dict
 import gym
-import numpy as np
+
+# import numpy as np # Not strictly needed here
 from agents.abstractAgent import AbstractAgent
 
 
@@ -18,13 +19,16 @@ class RandomAgent(AbstractAgent):
     It does not learn or use the state information to make decisions.
     """
 
-    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+    def __init__(
+        self, observation_space: gym.Space, action_space: gym.Space, **kwargs: Any
+    ):  # Added **kwargs
         """
         Initializes the RandomAgent.
 
         Args:
             observation_space (gym.Space): The environment's observation space.
             action_space (gym.Space): The environment's action space.
+            **kwargs: Accepts other keyword arguments and ignores them.
         """
         super().__init__(observation_space, action_space)
         self.history = ""  # For logging actions if needed.
@@ -74,15 +78,36 @@ class RandomAgent(AbstractAgent):
         """
         return {}
 
-    def save_model(self, path: str, filename: str = "history.txt") -> None:
+    def save_model(
+        self, path: str, filename: str = "random_agent_history.txt"
+    ) -> str:  # Return path
         """Saves the history of actions and states to a text file."""
+        # Random agent doesn't have a "model" in the typical sense,
+        # but we can save its history if that's useful.
+        # Or, simply do nothing if there's nothing to save.
+        # For now, let's assume it might save some operational log or history.
+        full_path = os.path.join(path, filename)
         os.makedirs(path, exist_ok=True)
-        with open(os.path.join(path, filename), "w") as f:
-            f.write(self.history)
+        try:
+            with open(full_path, "w") as f:
+                f.write(
+                    self.history if hasattr(self, "history") else "No history recorded."
+                )
+            print(f"RandomAgent history/log saved to {full_path}")
+        except Exception as e:
+            print(f"Could not save RandomAgent history: {e}")
+            return None  # Indicate failure
+        return full_path
 
     @classmethod
     def load_model(cls, path: str, filename: str, **kwargs: Any) -> "RandomAgent":
-        """The RandomAgent is stateless and cannot be loaded."""
-        raise NotImplementedError(
-            "The RandomAgent is stateless and does not support loading."
+        """The RandomAgent is stateless and typically not loaded in a meaningful way."""
+        # Re-instantiate a new RandomAgent.
+        if "observation_space" not in kwargs or "action_space" not in kwargs:
+            raise ValueError(
+                "observation_space and action_space must be provided in kwargs for RandomAgent.load_model"
+            )
+        print(
+            f"RandomAgent is stateless. Creating a new instance. (Path: {path}/{filename} ignored for model state)."
         )
+        return cls(kwargs["observation_space"], kwargs["action_space"])

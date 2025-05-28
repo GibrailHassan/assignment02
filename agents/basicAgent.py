@@ -8,41 +8,40 @@ without using any reinforcement learning algorithms.
 
 from typing import Any, Dict
 import gym
+import os  # Added for save_model path creation
+
+# import numpy as np # Not strictly needed here if get_action is simplified
 from agents.abstractAgent import AbstractAgent
+import mlflow  # For MLflow artifact logging
 
 
 class BasicAgent(AbstractAgent):
     """
-    A basic, rule-based agent that selects actions to minimize distance to a target.
-
-    Note: The original implementation of this agent required the full environment
-    in its get_action method. This has been refactored to be compliant with the
-    standard agent-runner interaction, though its heuristic nature remains.
-    For its heuristic to work, it would need more information than just the state.
-    As is, its get_action method is not fully functional without modification.
+    A basic, rule-based agent.
+    Its original heuristic logic for MoveToBeacon is not fully implemented here
+    as it required direct environment access in get_action.
+    It currently acts randomly to satisfy the interface.
     """
 
-    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+    def __init__(
+        self, observation_space: gym.Space, action_space: gym.Space, **kwargs: Any
+    ):  # Added **kwargs
         """
         Initializes the BasicAgent.
 
         Args:
             observation_space (gym.Space): The environment's observation space.
             action_space (gym.Space): The environment's action space.
+            **kwargs: Accepts other keyword arguments and ignores them.
         """
         super().__init__(observation_space, action_space)
 
     def get_action(self, state: Any, is_training: bool = True) -> int:
         """
-        Selects an action.
-
-        NOTE: The original heuristic logic required access to the 'env' object
-        to simulate next states, which is not standard. A proper implementation
-        would require refactoring the heuristic logic itself. For now, we
-        will have it act like a RandomAgent to satisfy the interface.
+        Selects an action. Currently defaults to random.
+        The original heuristic (minimizing distance to beacon) would require
+        access to the environment object or more complex state information.
         """
-        # To make this agent runnable, we default to random action selection.
-        # To implement the original heuristic, this method would need to be redesigned.
         return self.action_space.sample()
 
     def update(
@@ -77,11 +76,31 @@ class BasicAgent(AbstractAgent):
         """
         return {}
 
-    def save_model(self, path: str, filename: str) -> None:
-        """This agent does not have a model to save."""
-        pass
+    def save_model(
+        self, path: str, filename: str = "basic_agent_info.txt"
+    ) -> str:  # Return path
+        """This agent does not have a trainable model, but can save info."""
+        full_path = os.path.join(path, filename)
+        os.makedirs(path, exist_ok=True)
+        try:
+            with open(full_path, "w") as f:
+                f.write("BasicAgent: No trainable parameters.")
+            print(f"BasicAgent info saved to {full_path}")
+            if mlflow.active_run():
+                mlflow.log_artifact(full_path, artifact_path="agent_info")
+        except Exception as e:
+            print(f"Could not save BasicAgent info: {e}")
+            return None
+        return full_path
 
     @classmethod
     def load_model(cls, path: str, filename: str, **kwargs: Any) -> "BasicAgent":
-        """This agent does not have a model to load."""
-        raise NotImplementedError("The BasicAgent does not support loading models.")
+        """This agent does not have a model state to load."""
+        if "observation_space" not in kwargs or "action_space" not in kwargs:
+            raise ValueError(
+                "observation_space and action_space must be provided in kwargs for BasicAgent.load_model"
+            )
+        print(
+            f"BasicAgent is stateless. Creating a new instance. (Path: {path}/{filename} ignored for model state)."
+        )
+        return cls(kwargs["observation_space"], kwargs["action_space"])
