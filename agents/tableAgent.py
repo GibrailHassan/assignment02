@@ -37,42 +37,31 @@ class TableBasedAgent(AbstractAgent):
     ):
         super().__init__(observation_space, action_space)
 
-        # --- Hyperparameters ---
         self.learning_rate: float = learning_rate
         self.discount_factor: float = discount_factor
         self.epsilon: float = epsilon
         self.epsilon_decay: float = epsilon_decay
         self.epsilon_min: float = epsilon_min
 
-        # --- Dynamic Q-Table Initialization ---
-        # Calculate the size of each dimension of the state space.
-        # e.g., for a range of [-10, 10], the size is 10 - (-10) + 1 = 21.
-        state_dims = (observation_space.high - observation_space.low + 1).astype(int)
-
-        # The number of actions is the size of the discrete action space.
+        # state_dims represents the size of each dimension for Q-table indexing
+        state_dims_for_q_table = (
+            observation_space.high - observation_space.low + 1
+        ).astype(int)
         num_actions = action_space.n
-
-        # Combine state dimensions and action dimension for the full Q-table shape.
-        q_table_shape = tuple(state_dims) + (num_actions,)
+        q_table_shape = tuple(state_dims_for_q_table) + (num_actions,)
         self.q_table: torch.Tensor = torch.zeros(q_table_shape)
 
-        # --- State to Index Offset ---
-        # To handle negative state values, we create an offset.
-        # A state of -10 should map to index 0. So, offset = -(-10) = 10.
+        # index_offset is used to map environment states (which can be negative)
+        # to non-negative Q-table indices.
         self.index_offset = -observation_space.low.astype(int)
-
         print(f"Initialized Q-table with shape: {q_table_shape}")
 
     def _get_q_table_indices(self, state: np.ndarray) -> tuple:
-        """Converts an environment state to valid Q-table indices."""
-        # Add the offset to shift all state values to be non-negative.
+        # Apply offset and convert to integer tuple for indexing
         indices = tuple((state + self.index_offset).astype(int))
         return indices
 
     def get_action(self, state: np.ndarray, is_training: bool = True) -> int:
-        """
-        Selects an action using an epsilon-greedy policy.
-        """
         current_epsilon: float = self.epsilon if is_training else 0.0
         if random.random() < current_epsilon:
             return self.action_space.sample()
@@ -81,8 +70,6 @@ class TableBasedAgent(AbstractAgent):
         q_values_for_state: torch.Tensor = self.q_table[state_indices]
         best_action: int = torch.argmax(q_values_for_state).item()
         return best_action
-
-    # ... (on_episode_start, on_episode_end, get_update_info methods remain the same) ...
 
     def update(
         self,
@@ -93,24 +80,25 @@ class TableBasedAgent(AbstractAgent):
         done: bool,
         **kwargs: Any,
     ) -> None:
-        """
-        A placeholder for the update method, to be implemented by child classes.
-        """
+        # This method must be implemented by child classes (QLearningAgent, SARSAAgent)
         raise NotImplementedError
 
     def on_episode_start(self) -> None:
+        # Hook for logic at the start of an episode (e.g., resetting agent's episode-specific state)
         pass
 
     def on_episode_end(self) -> None:
+        # Hook for logic at the end of an episode (e.g., decaying epsilon)
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
     def get_update_info(self) -> Dict[str, float]:
+        # Returns agent-specific information for logging by the runner
         return {"epsilon": self.epsilon}
 
     def save_model(self, path: str, filename: str = "q_table.pt") -> None:
         os.makedirs(path, exist_ok=True)
         model_path: str = os.path.join(path, filename)
-        # We save both the table and the index offset for correct loading.
+        # Save both the Q-table and the index_offset needed for correct loading
         torch.save(
             {"q_table": self.q_table, "index_offset": self.index_offset}, model_path
         )
@@ -121,23 +109,60 @@ class TableBasedAgent(AbstractAgent):
         cls: Type[T], path: str, filename: str = "q_table.pt", **kwargs: Any
     ) -> T:
         model_path: str = os.path.join(path, filename)
-        data = torch.load(model_path)
-        q_table = data["q_table"]
-        index_offset = data["index_offset"]
 
-        # Reconstruct observation and action spaces from the loaded data
-        state_dims = np.array(q_table.shape[:-1])
-        low = -index_offset
-        high = state_dims - index_offset - 1
-        observation_space = gym.spaces.Box(low=low, high=high, dtype=np.int32)
+        # Explicitly set weights_only=False as the saved file contains more than just weights
+        # (it contains a dictionary with q_table and index_offset, which are NumPy arrays when saved by older PyTorch)
+        # and was likely saved with an older PyTorch version or without weights_only=True.
+        data = torch.load(model_path, weights_only=False)
+
+        q_table = data["q_table"]
+        index_offset = data[
+            "index_offset"
+        ]  # This is a NumPy array, e.g., array([10, 10])
+
+        # Reconstruct the observation_space for the agent
+        # The shape of an observation is the number of dimensions in the state vector.
+        # This can be derived from the length of the index_offset array.
+        observation_actual_shape: tuple = (
+            index_offset.shape
+        )  # e.g., (2,) for a 2D state vector
+
+        # 'low' bounds for the observation space
+        low = -index_offset  # e.g., array([-10, -10])
+
+        # 'high' bounds for the observation space
+        # state_dims_for_q_table_sizes = np.array(q_table.shape[:-1]) # e.g., array([21, 21])
+        # high_corrected = low + state_dims_for_q_table_sizes - 1 # e.g., array([10, 10])
+
+        # A more direct way to get high assuming symmetric space around 0 for index_offset
+        # If observation_space.low was [-10,-10] and observation_space.high was [10,10]
+        # then index_offset is [10,10].
+        # state_dims_for_q_table = (high - low + 1)
+        # high = state_dims_for_q_table - 1 + low
+        # high = (q_table.shape[:-1]) - 1 - index_offset # This seems more direct
+        q_table_state_dims_sizes = np.array(q_table.shape[:-1])
+        high_corrected = q_table_state_dims_sizes - 1 - index_offset
+
+        # Create the gym.spaces.Box object
+        # The 'shape' argument must match the shape of 'low' and 'high', and represent one observation.
+        observation_space = gym.spaces.Box(
+            low=low, high=high_corrected, shape=observation_actual_shape, dtype=np.int32
+        )
+
+        # Reconstruct the action_space
         action_space = gym.spaces.Discrete(q_table.shape[-1])
 
+        # Update kwargs with the reconstructed spaces for agent initialization
         kwargs["observation_space"] = observation_space
         kwargs["action_space"] = action_space
 
+        # Create the agent instance
         instance: T = cls(**kwargs)
+
+        # Assign the loaded Q-table and index_offset
         instance.q_table = q_table
-        instance.index_offset = index_offset
+        instance.index_offset = index_offset  # Ensure the instance has this attribute
+
         print(f"Q-table loaded from {model_path}")
 
         return instance
