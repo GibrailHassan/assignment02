@@ -22,6 +22,7 @@ dependencies = [
     "torch-tb-profiler",
     "absl-py",
     "torch",
+    "PyYAML"
 ]
 
 [tool.uv.sources]

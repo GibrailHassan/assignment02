@@ -1,0 +1,42 @@
+# configs/dqn_cnn_train_defeat_roaches.yaml
+#
+# Trains a DQN agent with a Convolutional Neural Network (CNN)
+# on the DefeatRoachesEnv.
+
+experiment_name: "DQN (CNN) on DefeatRoaches"
+
+# --- Environment Configuration ---
+environment:
+  name: "DefeatRoachesEnv"
+  params:
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent"
+  params:
+    use_cnn:
+      true # CRITICAL: Set to true to use the CNN.
+      # If using the newer network factory:
+      # network_name: "CNN"
+      # network_params: {}
+
+    # DQN Hyperparameters suitable for DefeatRoaches
+    batch_size: 128
+    learning_rate: 0.00025 # Adjusted from original 0.0025 for potentially better stability with CNN
+    discount_factor: 0.99
+    epsilon: 1.0
+    epsilon_decay: 0.000005 # Linear decay: (1.0 - 0.1) / 180,000 steps (example)
+    epsilon_min: 0.1
+    target_update_freq: 1000 # Original had 50, might be too frequent for stable CNNs
+    memory_capacity: 100000 # Original had 10000
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 3000 # May need significant training.
+  is_training: true
+  tensorboard_log_dir: "./logs" # e.g., "./logs/dqn_dr_cnn"
+  model_save_dir: "./models"
+  save_model_each_episode_num: 100

@@ -1,0 +1,47 @@
+# configs/dqn_fcn_train_move_to_beacon_discrete.yaml
+#
+# Trains a DQN agent with a Fully Connected Network (MLP)
+# on the MoveToBeaconDiscreteEnv (vector-based state).
+
+experiment_name: "DQN (FCN/MLP) on MoveToBeacon (Discrete)"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconDiscreteEnv"
+  params:
+    distance_discrete_range: 10 # Discretization levels for state.
+    distance: 1 # Movement distance per step.
+    screen_size: 32 # Screen resolution.
+    step_mul: 8 # Game steps per agent action.
+    is_visualize: false # Set to true to watch training (slows it down).
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent"
+  params:
+    use_cnn:
+      false # CRITICAL: Set to false to use the MLP/FCN.
+      # If using the newer network factory:
+      # network_name: "MLP"
+      # network_params:
+      #   hidden_layers: [64, 64] # Example MLP architecture
+
+    # Common DQN Hyperparameters
+    batch_size: 32
+    learning_rate: 0.001
+    discount_factor: 0.99
+    epsilon: 1.0 # Initial exploration rate.
+    epsilon_decay:
+      0.00001 # Linear decay per step (adjust based on total steps).
+      # Example: (1.0 - 0.1) / 90000 steps for 90k decay period.
+    epsilon_min: 0.1 # Minimum exploration rate.
+    target_update_freq: 1000 # Steps between target network updates.
+    memory_capacity: 50000
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 1000 # Total episodes for training.
+  is_training: true
+  tensorboard_log_dir: "./logs"
+  model_save_dir: "./models"
+  save_model_each_episode_num: 100 # Frequency of saving model checkpoints.

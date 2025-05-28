@@ -1,0 +1,60 @@
+# configs/sarsa_move_to_beacon.yaml
+#
+# This configuration file defines all the parameters needed to run an experiment
+# with the SARSA agent on the discrete MoveToBeacon environment.
+# Using config files like this allows for easy-to-read, reproducible, and
+# shareable experiment setups without modifying any Python code.
+
+# A descriptive name for the experiment, useful for logging.
+experiment_name: "SARSA on MoveToBeacon (Discrete)"
+
+# --- Environment Configuration ---
+# Specifies which game environment to use and its parameters.
+environment:
+  # The name must match a key in the environment factory's registry.
+  name: "MoveToBeaconDiscreteEnv"
+
+  # A dictionary of parameters to pass to the environment's constructor.
+  params:
+    distance_discrete_range: 10
+    distance: 1
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false
+
+# --- Agent Configuration ---
+# Specifies which agent to use and its hyperparameters.
+agent:
+  # The name must match a key in the agent factory's registry.
+  name: "SARSAAgent"
+
+  # A dictionary of hyperparameters to pass to the agent's constructor.
+  params:
+    learning_rate: 0.1
+    discount_factor: 0.99
+    epsilon: 1.0
+    epsilon_decay: 0.995
+    epsilon_min: 0.1
+
+# --- Runner Configuration ---
+# Specifies the parameters for the training/evaluation loop.
+runner:
+  # The total number of episodes to run the experiment for.
+  total_episodes: 500
+
+  # Set to 'true' for training, 'false' for evaluation.
+  is_training: true
+
+  # If is_training is false, specify the path to a saved model.
+  # load_model_path: "models/250508_1145_SARSAAgent"
+
+  # --- Logging and Model Saving ---
+  # Directory to save TensorBoard logs. A timestamped sub-folder will be created.
+  tensorboard_log_dir: "./logs"
+
+  # Directory to save trained models. A timestamped sub-folder will be created.
+  model_save_dir: "./models"
+
+  # How often (in episodes) to save a checkpoint of the model during training.
+  # Set to 0 to disable intermediate saving.
+  save_model_each_episode_num: 100

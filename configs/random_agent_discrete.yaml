@@ -1,0 +1,35 @@
+# Random Agent Configuration for MoveToBeaconDiscreteEnv
+# configs/random_agent_discrete.yaml
+
+# Runs a RandomAgent on the MoveToBeaconDiscreteEnv for baseline comparison.
+# This is one of the options from the original 'run_basic.py' script.
+
+experiment_name: "RandomAgent on MoveToBeacon (Discrete)"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconDiscreteEnv"
+  params:
+    distance_discrete_range: 10
+    distance: 1
+    screen_size: 32
+    step_mul: 8
+    is_visualize: true # Often useful to watch the random agent.
+
+# --- Agent Configuration ---
+# The RandomAgent typically doesn't have hyperparameters.
+agent:
+  name: "RandomAgent"
+  params: {} # No specific parameters needed for RandomAgent.
+
+# --- Runner Configuration ---
+# The RandomAgent doesn't train, so is_training is effectively false.
+# We run it for a small number of episodes to observe its behavior.
+runner:
+  total_episodes: 20
+  is_training: false # RandomAgent does not learn.
+
+  # Logging and model saving are not applicable to RandomAgent.
+  tensorboard_log_dir: "" # Disable TensorBoard logging.
+  model_save_dir: "" # Disable model saving.
+  save_model_each_episode_num: 0

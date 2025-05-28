@@ -1,62 +1,88 @@
+# agents/randomAgent.py
+
 """
 This module defines a RandomAgent class, which inherits from AbstractAgent.
-The RandomAgent selects actions randomly from the available action space,
-without any learning or state consideration. It also keeps a history of
-its actions and corresponding states which can be saved to a file.
+The RandomAgent selects actions randomly from the available action space.
 """
 
-import numpy as np
 import os
+from typing import Any, Dict
+import gym
+import numpy as np
 from agents.abstractAgent import AbstractAgent
-from env.env_discrete import ACTION_DIRECTION
 
 
-# Definition of the RandomAgent class
 class RandomAgent(AbstractAgent):
     """
-    Random agent that keeps track of its actions and states in a history string.
+    An agent that selects actions randomly, serving as a baseline.
+    It does not learn or use the state information to make decisions.
     """
 
-    def __init__(self, state_shape, action_shape):
+    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
         """
-        Initializes the RandomAgent with the state and action space shapes.
+        Initializes the RandomAgent.
 
         Args:
-            state_shape (tuple): The shape of the state space.
-            action_shape (tuple): The shape of the action space.
+            observation_space (gym.Space): The environment's observation space.
+            action_space (gym.Space): The environment's action space.
         """
-        super().__init__(state_shape, action_shape)
+        super().__init__(observation_space, action_space)
+        self.history = ""  # For logging actions if needed.
 
-        self.history = (
-            ""  # Initialize an empty string to store the history of actions and states.
-        )
-
-    def get_action(self, state):
+    def get_action(self, state: Any, is_training: bool = True) -> int:
         """
         Selects a random action from the action space.
 
         Args:
-            state: The current state of the environment.
+            state: The current state of the environment (ignored).
+            is_training: Flag indicating training mode (ignored).
 
         Returns:
-            int: A randomly selected action.
+            int: A randomly selected action index.
         """
-        self.history += f"From State {state}"
-        action = np.random.randint(
-            len(ACTION_DIRECTION)
-        )  # Randomly choose an action index.
-        self.history += f"Move {ACTION_DIRECTION[action]}\n"  # Append the action and its direction to the history.
-        return action
+        return self.action_space.sample()
 
-    def update(self, state, action, reward, next_state, done):
-        pass  # The RandomAgent does not learn, so the update method is intentionally left empty.
+    def update(
+        self,
+        state: Any,
+        action: Any,
+        reward: float,
+        next_state: Any,
+        done: bool,
+        **kwargs: Any,
+    ) -> None:
+        """
+        The RandomAgent does not learn, so this method is empty.
+        """
+        pass
 
-    def save_model(self, path, filename="history.txt"):
+    def on_episode_start(self) -> None:
+        """
+        Hook for start-of-episode logic. No action needed for this agent.
+        """
+        pass
+
+    def on_episode_end(self) -> None:
+        """
+        Hook for end-of-episode logic. No action needed for this agent.
+        """
+        pass
+
+    def get_update_info(self) -> Dict[str, Any]:
+        """
+        Returns an empty dictionary as this agent has no metrics to log.
+        """
+        return {}
+
+    def save_model(self, path: str, filename: str = "history.txt") -> None:
         """Saves the history of actions and states to a text file."""
-        with open(
-            os.path.join(path, filename), "w"
-        ) as f:  # Open the file in write mode.
-            f.write(self.history)  # Write the history string to the file.
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, filename), "w") as f:
+            f.write(self.history)
 
-    def load_model(self, path, filename):
-        raise NotImplementedError("Error: Random Agent is stateless!")
+    @classmethod
+    def load_model(cls, path: str, filename: str, **kwargs: Any) -> "RandomAgent":
+        """The RandomAgent is stateless and cannot be loaded."""
+        raise NotImplementedError(
+            "The RandomAgent is stateless and does not support loading."
+        )

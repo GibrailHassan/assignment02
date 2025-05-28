@@ -1,94 +1,73 @@
-import numpy as np
-import pandas as pd
+# agents/qlAgent.py
+
+"""
+Implements the Q-Learning algorithm by inheriting from the TableBasedAgent.
+
+This file defines the QLearningAgent, which contains the specific update rule
+for the Q-Learning (off-policy) temporal difference control algorithm. All
+common functionalities like action selection and model management are handled
+by the parent TableBasedAgent class.
+"""
+
+from typing import Any
 import torch
-import random
-import pickle
-import os
-
-from agents.abstractAgent import AbstractAgent
+import numpy as np
+from agents.tableAgent import TableBasedAgent
 
 
-class QLearningAgent(AbstractAgent):
+class QLearningAgent(TableBasedAgent):
     """
-    Q Learning RL agent that produces actions based on the highest Q value, computes and saves sa-pairs in a Q table
+    An agent that learns to make decisions using the Q-Learning algorithm.
+
+    This agent inherits from TableBasedAgent and provides the concrete implementation
+    of the off-policy Q-Learning update rule.
     """
 
-    def __init__(
+    def update(
         self,
-        state_shape,
-        action_shape,
-        learning_rate=0.1,
-        discount_factor=0.99,
-        epsilon=1.0,
-        epsilon_decay=0.995,
-        epsilon_min=0.1,
-    ):
+        state: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Updates the Q-table using the Q-Learning update rule.
 
-        super().__init__(state_shape, action_shape)
+        The formula for the update is:
+        Q(s, a) <- Q(s, a) + alpha * [r + gamma * max_a'(Q(s', a')) - Q(s, a)]
 
-        self.learning_rate = learning_rate
-        self.discount_factor = discount_factor
-        self.epsilon = epsilon
-        self.epsilon_decay = epsilon_decay
-        self.epsilon_min = epsilon_min
+        This is an "off-policy" method because it updates the Q-value based on the
+        maximum possible value in the next state (greedy action), regardless of
+        which action is actually chosen by the current exploration policy.
 
-        # TODO: create the Q table e.g. as pandas.DataFrame or 2D numpy array
-        # Q = [x,y,actions]
-        print(state_shape)
-        self.Q_table = torch.zeros((64, 64, len(action_shape)))
-        print(self.Q_table)
-        print(self.Q_table.size())
+        Args:
+            state (np.ndarray): The state from which the action was taken.
+            action (int): The index of the action that was taken.
+            reward (float): The reward received from the environment.
+            next_state (np.ndarray): The state transitioned to after the action.
+            done (bool): A flag indicating if the episode has terminated.
+            **kwargs: Additional arguments (not used in this implementation).
+        """
+        # Get the current Q-value for the state-action pair
+        current_q_value: torch.Tensor = self.q_table[tuple(state)][action]
 
-    def random_action(self):
-        return np.random.randint(self.Q_table.shape[2])
-
-    def q_of_state(self, state: np.ndarray) -> torch.Tensor:
-        return self.Q_table[state[0], state[1]]
-
-    def get_action(self, state):
-        # Explore: choose random action based on epsilon probability
-        if random.random() < self.epsilon:
-            return self.random_action()
-
-        # Exploit: choose best action based on Q values
-        q_values = self.q_of_state(state)
-        best_action = q_values.argmax().item()
-
-        # If all Q values are 0, choose a random action
-        if q_values[best_action] == 0:
-            return self.random_action()
-
-        return best_action
-
-    def update(self, state, action, reward, next_state, done):
-        epsilon = None
-        # update q-table
-        self.Q_table[state[0], state[1], action] += self.learning_rate * (
-            reward
-            + self.discount_factor
-            * torch.max(self.Q_table[next_state[0], next_state[1]])
-            - self.Q_table[state[0], state[1], action]
+        # Get the maximum Q-value for the next state (the greedy, off-policy part)
+        # If the episode is done, the value of the next state is 0.
+        max_next_q_value: torch.Tensor = (
+            torch.max(self.q_table[tuple(next_state)])
+            if not done
+            else torch.tensor(0.0)
         )
-        # update epsilon
-        if done:
-            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
-            epsilon = self.epsilon
-            print(self.epsilon)
 
-        return epsilon
+        # Calculate the target Q-value (also known as the TD target)
+        target_q_value: float = reward + self.discount_factor * max_next_q_value
 
-    def save_model(self, path, filename="qlagent"):
-        os.makedirs(path, exist_ok=True)
-        # Save directly as PyTorch tensor
-        torch.save(self.q_table, os.path.join(path, f"{filename}.pt"))
+        # Calculate the new Q-value using the learning rate
+        new_q_value: torch.Tensor = current_q_value + self.learning_rate * (
+            target_q_value - current_q_value
+        )
 
-    @classmethod
-    def load_model(cls, path, filename="qlagent"):
-        pt_path = os.path.join(path, f"{filename}.pt")
-
-        # Create an instance of the class
-        instance = cls(state_shape=(0,), action_shape=())  # Temporary values
-
-        # Load the PyTorch tensor
-        instance.q_table = torch.tensor(torch.load(pt_path, weights_only=False))
-        return instance
+        # Update the Q-table with the new value
+        self.q_table[tuple(state)][action] = new_q_value

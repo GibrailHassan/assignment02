@@ -1,28 +1,33 @@
+# env/dr_env.py
+
 import datetime
 import gym
 import numpy as np
 import os
-import sys
+
+# import sys # Not used directly
+from typing import Any, Dict, Tuple  # Added Any here
 from gym.spaces import Discrete, Box
 from pysc2.env import sc2_env
 from pysc2.lib import actions, features
-from torch.utils.tensorboard import SummaryWriter
+
+# from torch.utils.tensorboard import SummaryWriter # Not used by this class
 
 
 class DefeatRoachesEnv(gym.Env):
+
     def __init__(
         self,
-        screen_size=64,
-        step_mul=8,
-        is_visualize=False,
-        reselect_army_each_nstep=5,
-        tensorboard_dir=None,
-        tensorboard_prefix="rainbow",
+        screen_size: int = 64,
+        step_mul: int = 8,
+        is_visualize: bool = False,
+        reselect_army_each_nstep: int = 5,
     ):
         super(DefeatRoachesEnv, self).__init__()
 
         self.screen_size = screen_size
         self.reselect_army_each_nstep = reselect_army_each_nstep
+        self._step_counter_env = 0
 
         self._env = sc2_env.SC2Env(
             map_name="DefeatRoaches",
@@ -38,105 +43,106 @@ class DefeatRoachesEnv(gym.Env):
             visualize=is_visualize,
         )
 
-        self.action_space = Discrete(
-            self.screen_size**2
-        )  # https://github.com/pekaalto/sc2atari/blob/master/sc2/sc2toatari.py#L39
+        self.action_space = Discrete(self.screen_size * self.screen_size)
+
         self.observation_space = Box(
             low=0,
             high=features.SCREEN_FEATURES.player_relative.scale,
-            shape=[self.screen_size, self.screen_size, 1],
+            shape=[self.screen_size, self.screen_size, 1],  # H, W, C
+            dtype=np.int32,
         )
 
-        self.agg_n_episodes = 50
-        self.rolling_episode_score = np.zeros(self.agg_n_episodes, dtype=np.float32)
-        self.step_counter = 0
-        self.episode_counter = 0
-        self.total_score = 0
+        self.attack_action_id = actions.FUNCTIONS.Attack_screen.id
+        self.select_army_action_id = actions.FUNCTIONS.select_army.id
 
-        self.tensorboard_dir = tensorboard_dir
-        if self.tensorboard_dir is not None:
-            self.tb_path = os.path.join(
-                os.path.abspath(tensorboard_dir),
-                f'{tensorboard_prefix}_{datetime.datetime.now().strftime("%y%m%d_%H%M")}',
-            )
-            self.writer = SummaryWriter(self.tb_path)
+        self._pysc2_timestep = None
 
-    def reset(self):
-        self.attack_action_id = [
-            k for k in actions.FUNCTIONS if k.name == "Attack_screen"
-        ][0].id
-        self.steps = 0
+    def reset(self) -> np.ndarray:
+        self._step_counter_env = 0
         self._pysc2_timestep = self._env.reset()[0]
+        self._select_army()
         return self._get_state()
 
-    def step(self, action):
-        # reselect each N steps
+    def step(
+        self, action: int
+    ) -> Tuple[np.ndarray, float, bool, Dict[str, Any]]:  # Use Dict for info
         if (
             self.reselect_army_each_nstep > 0
-            and self.steps % self.reselect_army_each_nstep == 0
+            and self._step_counter_env > 0
+            and self._step_counter_env % self.reselect_army_each_nstep == 0
         ):
             self._select_army()
 
         self._pysc2_timestep = self._pysc2_step(action)
-        self.steps += 1
+        self._step_counter_env += 1
 
-        # mdp
         state = self._get_state()
-        reward = self._pysc2_timestep.reward
+        reward = float(self._pysc2_timestep.reward)
         done = self._pysc2_timestep.last()
-        if done:
-            self._summarize_episode()
-        return state, reward, done, {}
 
-    def _pysc2_step(self, action):
-        coords = np.unravel_index(action, (self.screen_size,) * 2)
-        # in pysc2 the coordinates are reversed
-        action = [actions.FunctionCall(self.attack_action_id, [[0], coords[::-1]])]
+        info = {"score": self._pysc2_timestep.observation["score_cumulative"][0]}
+
+        return state, reward, done, info
+
+    def _pysc2_step(self, action_index: int) -> Any:  # Returns a pysc2 TimeStep object
+        coords_yx = np.unravel_index(action_index, (self.screen_size, self.screen_size))
+        coords_xy = coords_yx[::-1]
+
+        pysc2_action = [actions.FunctionCall(self.attack_action_id, [[0], coords_xy])]
+
         try:
-            timestep = self._env.step(action)[0]
+            timestep = self._env.step(pysc2_action)[0]
         except ValueError:
-            # if attack is not available, select army and try again on the next step
+            # If attack failed (e.g. no units selected), select army and return current timestep
+            # The agent will try to act again in the next environment step.
             self._select_army()
-            timestep = self._env.step(action)[0]
+            # Return the timestep resulting from the select_army action, or the last known valid one.
+            # For simplicity, we can just step with select_army.
+            timestep = self._env.step(
+                [actions.FunctionCall(self.select_army_action_id, [[0]])]
+            )[0]
         return timestep
 
-    def _select_army(self):
-        self._env.step([actions.FunctionCall(actions.FUNCTIONS.select_army.id, [[0]])])
+    def _select_army(self) -> None:
+        """Selects all units of the agent's army."""
+        # This step action also returns a timestep, but we don't need to process it here
+        # as its primary purpose is to change the game state (unit selection).
+        self._env.step([actions.FunctionCall(self.select_army_action_id, [[0]])])
 
-    def _get_state(self):
-        return self._pysc2_timestep.observation["feature_screen"][
+    def _get_state(self) -> np.ndarray:
+        if self._pysc2_timestep is None:
+            return np.zeros(
+                self.observation_space.shape, dtype=self.observation_space.dtype
+            )
+
+        feature_screen = self._pysc2_timestep.observation["feature_screen"]
+        player_relative_map = feature_screen[
             features.SCREEN_FEATURES.player_relative.index
-        ][..., np.newaxis]
+        ]
 
-    def _summarize_episode(self):
-        episode_score = self._pysc2_timestep.observation["score_cumulative"][0]
-        self.rolling_episode_score[self.episode_counter % self.agg_n_episodes] = (
-            episode_score
-        )
-        self.episode_counter += 1
-        self.total_score += episode_score
-        r = self.rolling_episode_score[: min(self.episode_counter, self.agg_n_episodes)]
-        print(
-            f"episode {self.episode_counter}, score: {episode_score}, - avg {round(r.mean(), 3)}, min {round(r.min(), 3)}, max {round(r.max(),3)}"
-        )
-        if self.tensorboard_dir is not None:
-            self.writer.add_scalar(
-                "episodic_score", episode_score, self.episode_counter
-            )
-            self.writer.add_scalar(
-                "total_score", self.total_score, self.episode_counter
-            )
-        sys.stdout.flush()
+        state_array = np.array(
+            player_relative_map, copy=True, dtype=self.observation_space.dtype
+        )  # Ensure dtype
 
-    def close(self):
+        return state_array[..., np.newaxis]  # Add channel dim: (H, W) -> (H, W, 1)
+
+    def close(self) -> None:
         if self._env is not None:
             self._env.close()
         super().close()
 
     @property
-    def state_shape(self):
-        return self.observation_space.shape
+    def unwrapped(self) -> "DefeatRoachesEnv":
+        return self
 
-    @property
-    def action_shape(self):
-        return (self.action_space.n,)
+    def render(self, mode="human") -> Any:
+        if mode == "human" and hasattr(self._env, "visualize") and self._env.visualize:
+            return
+        elif mode == "rgb_array":
+            if (
+                self._pysc2_timestep
+                and "rgb_screen" in self._pysc2_timestep.observation
+            ):
+                return self._pysc2_timestep.observation["rgb_screen"]
+            return np.zeros((self.screen_size, self.screen_size, 3), dtype=np.uint8)
+        super().render(mode=mode)

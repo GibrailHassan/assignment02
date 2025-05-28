@@ -1,86 +1,85 @@
+# agents/abstractAgent.py
+
 """
 This module defines the AbstractAgent class, an abstract base class (ABC)
 that outlines the common interface for all reinforcement learning agents.
-It enforces the implementation of essential methods like getting an action,
-updating the agent's knowledge, and saving/loading its model.
 """
 
 import abc
+from typing import Any, Dict
+import gym
 
 
 class AbstractAgent(metaclass=abc.ABCMeta):
     """
     Abstract class defining the structure and behavior of an RL agent.
-    All concrete agent implementations should inherit from this class.
     """
 
-    def __init__(self, state_shape, action_shape):
+    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
         """
-        Initializes the agent with the shapes of the state and action spaces.
+        Initializes the agent with the environment's observation and action spaces.
 
         Args:
-            state_shape (tuple): The shape of the observation/state space.
-            action_shape (tuple or int): The shape or size of the action space.
+            observation_space (gym.Space): The Gym observation space.
+            action_space (gym.Space): The Gym action space.
         """
-        self.state_shape = state_shape
-        self.action_shape = action_shape
+        self.observation_space = observation_space
+        self.action_space = action_space
 
     @abc.abstractmethod
-    def get_action(self, state):
+    def get_action(self, state: Any, is_training: bool = True) -> Any:
         """
         Selects an action based on the current state of the environment.
-
-        Args:
-            state: The current state observation from the environment.
-
-        Returns:
-            The action selected by the agent.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def update(self, state, action, reward, next_state, done, next_action=None):
+    def update(
+        self,
+        state: Any,
+        action: Any,
+        reward: float,
+        next_state: Any,
+        done: bool,
+        **kwargs: Any,
+    ) -> None:
         """
-        Updates the agent's internal parameters (e.g., Q-table, neural network weights)
-        based on the observed transition (state, action, reward, next_state) and
-        whether the episode has terminated. For on-policy methods like SARSA,
-        the next_action is also required.
-
-        Args:
-            state: The state from which the action was taken.
-            action: The action taken by the agent.
-            reward (float): The reward received after taking the action.
-            next_state: The state transitioned to after the action.
-            done (bool): A flag indicating whether the episode has terminated.
-            next_action (optional): The action taken in the next_state (for on-policy methods).
-                                   Defaults to None for off-policy methods.
+        Updates the agent's internal parameters based on an experience.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def save_model(self, path, filename):
+    def get_update_info(self) -> Dict[str, Any]:
         """
-        Serializes and saves the agent's learned model (e.g., Q-table, network weights)
-        to a file.
+        Returns a dictionary of agent-specific metrics for logging.
+        """
+        raise NotImplementedError
 
-        Args:
-            path (str): The directory path where the model should be saved.
-            filename (str): The name of the file for the saved model.
+    @abc.abstractmethod
+    def on_episode_start(self) -> None:
+        """
+        A hook for any setup logic at the start of an episode.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def on_episode_end(self) -> None:
+        """
+        A hook for any cleanup or summary logic at the end of an episode.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def save_model(self, path: str, filename: str) -> None:
+        """
+        Saves the agent's learned model to a file.
         """
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
-    def load_model(cls, path, filename):
+    def load_model(cls, path: str, filename: str, **kwargs: Any) -> "AbstractAgent":
         """
-        Loads a previously saved model from a file. This is a class method
-        as it should be able to create an instance of the agent from the saved data.
-
-        Args:
-            path (str): The directory path from where the model should be loaded.
-            filename (str): The name of the file containing the saved model.
-
-        Returns:
-            An instance of the agent with the loaded model parameters.
+        Loads a previously saved model from a file.
         """
         raise NotImplementedError

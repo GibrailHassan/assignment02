@@ -1,0 +1,44 @@
+# configs/sarsa_eval_discrete.yaml
+#
+# Evaluates a pre-trained SARSA agent on the MoveToBeaconDiscreteEnv.
+# This configuration replaces the 'run_eval_sarsa.py' script.
+
+experiment_name: "Evaluation of SARSA Agent (Discrete)"
+
+# --- Environment Configuration ---
+# Specifies the environment to use for evaluation.
+environment:
+  name: "MoveToBeaconDiscreteEnv"
+  params:
+    distance_discrete_range: 10 # The range of discretization for distance.
+    distance: 1 # The distance the agent attempts to move in one step.
+    screen_size: 32 # Screen resolution (e.g., 32x32).
+    step_mul: 8 # Number of game steps per agent action.
+    is_visualize: false # Set to true to watch the agent play (slows down evaluation).
+
+# --- Agent Configuration ---
+# Specifies the agent type to load.
+agent:
+  name: "SARSAAgent" # Must match the type of the saved model.
+  params:
+    # These hyperparameters are primarily for re-instantiating the agent class.
+    # The loaded Q-table will define its actual behavior.
+    # Epsilon will be set to its minimum for exploitation during evaluation.
+    epsilon_min: 0.1
+
+# --- Runner Configuration ---
+# Defines how the evaluation will be run.
+runner:
+  total_episodes: 100 # Number of episodes to run for evaluation.
+  is_training: false # CRITICAL: Set to false for evaluation mode.
+
+  # Path to the directory containing the saved SARSA model.
+  # Replace with the actual path to your trained model.
+  load_model_path: "models/250508_1145_SARSAAgent" # Path to the saved model directory.
+
+  # TensorBoard logging for evaluation (optional).
+  tensorboard_log_dir: "./logs_eval"
+
+  # Model saving is disabled during evaluation.
+  model_save_dir: "" # No new models will be saved.
+  save_model_each_episode_num: 0 # Disables periodic saving.
