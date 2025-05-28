@@ -2,29 +2,38 @@
 
 """
 A unified entry point for running all reinforcement learning experiments,
-now with MLflow integration and a modular network creation pipeline.
+using enhanced utility functions for MLflow setup, configuration loading,
+agent and network preparation, and agent initialization.
 """
 
 import sys
-import yaml
-from typing import Dict, Any
+from typing import Dict, Any  # Removed Tuple as it's not directly used here
 
 from absl import app
 from absl import flags
 
 # MLflow import
 import mlflow
-import os  # For logging config file path
 
-from agents.factory import create_agent, AGENT_REGISTRY
-from env.factory import create_environment
+# import os # No longer directly needed here for os.path.basename
+
+# Import from utility module
+from utils.experiment_utils import (
+    load_config,
+    setup_mlflow_run,
+    prepare_agent_networks_and_params,
+    initialize_agent,
+)
+
+# Factories are now primarily used within experiment_utils, but AGENT_REGISTRY might be needed
+# if initialize_agent doesn't fully encapsulate loading logic that needs the registry.
+# For now, assuming initialize_agent handles it or has access.
+# from agents.factory import AGENT_REGISTRY # Keep if initialize_agent needs it for some reason
+
+from env.factory import create_environment  # Env factory is still directly used here
 from runner.runner import Runner
 
-# Import the new network factory
-from networks.factory import (
-    create_network as create_nn_from_factory,
-)  # Alias for clarity
-
+# from networks.factory import create_network as create_nn_from_factory # Used within prepare_agent_networks_and_params
 
 # --- Command-Line Argument Definition ---
 FLAGS = flags.FLAGS
@@ -32,196 +41,92 @@ flags.DEFINE_string("config", None, "Path to the YAML configuration file.")
 flags.mark_flag_as_required("config")
 
 
-def flatten_dict(
-    d: Dict[str, Any], parent_key: str = "", sep: str = "."
-) -> Dict[str, Any]:
-    """
-    Flattens a nested dictionary for MLflow parameter logging.
-    """
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            if isinstance(v, (list, tuple)):
-                items.append((new_key, str(v)))
-            else:
-                items.append((new_key, v))
-    return dict(items)
-
-
 def main(argv: Any) -> None:
     """
-    The main function that sets up and runs the RL experiment with MLflow tracking
-    and modular network creation.
+    The main function that sets up and runs the RL experiment with MLflow tracking.
     """
     # --- Configuration Loading ---
-    print(f"Loading configuration from: {FLAGS.config}")
-    try:
-        with open(FLAGS.config, "r") as f:
-            config: Dict[str, Any] = yaml.safe_load(f)
-    except FileNotFoundError:
-        print(f"Error: Configuration file not found at {FLAGS.config}")
-        sys.exit(1)
-    except yaml.YAMLError as e:
-        print(f"Error parsing YAML configuration file: {e}")
-        sys.exit(1)
+    config = load_config(FLAGS.config)
+    if config is None:
+        sys.exit(1)  # Exit if config loading failed
 
     # --- MLflow Setup ---
-    mlflow_experiment_name = config.get("experiment_name", "Default_RL_Experiment")
-    try:
-        mlflow.set_experiment(mlflow_experiment_name)
-        print(f"MLflow experiment set to: '{mlflow_experiment_name}'")
-    except Exception as e:
-        print(f"Error setting MLflow experiment: {e}.")
-
+    # The 'with' block ensures the MLflow run is properly started and ended.
     with mlflow.start_run() as run:
-        mlflow_run_id = run.info.run_id
-        print(f"MLflow Run ID: {mlflow_run_id}")
+        # Utility function handles setting experiment, logging params, and config artifact
+        mlflow_run_id = setup_mlflow_run(config, FLAGS.config)
 
-        try:
-            mlflow.log_artifact(FLAGS.config, artifact_path="configs")
+        if mlflow_run_id is None:
+            print("MLflow setup failed. Critical MLflow features might be unavailable.")
+            # Decide if an error here should be fatal or just a warning.
+            # For now, we'll let it proceed but some logging might not work.
+        else:
             print(
-                f"Logged configuration file '{FLAGS.config}' to MLflow artifacts (configs/{os.path.basename(FLAGS.config)})."
+                f"MLflow Run ID: {mlflow_run_id} successfully initialized for logging."
             )
-        except Exception as e:
-            print(f"Warning: Could not log config file to MLflow: {e}")
 
-        try:
-            flat_config = flatten_dict(config)
-            params_to_log = {}
-            for key, value in flat_config.items():
-                if isinstance(value, (str, int, float, bool)):
-                    if isinstance(value, str) and len(value) > 250:
-                        params_to_log[key] = value[:247] + "..."
-                    else:
-                        params_to_log[key] = value
-            if params_to_log:
-                mlflow.log_params(params_to_log)
-                print("Logged configuration parameters to MLflow.")
-        except Exception as e:
-            print(f"Warning: Could not log parameters to MLflow: {e}")
-
+        # Extract main configuration sections
         env_config = config.get("environment", {})
-        agent_config_from_yaml = config.get("agent", {})  # Keep original agent config
+        agent_config_yaml = config.get("agent", {})  # The 'agent' section from YAML
         runner_config = config.get("runner", {})
 
-        # --- Object Creation ---
+        # --- Environment Creation ---
         env = create_environment(
             name=env_config.get("name", "UnknownEnv"),
             params=env_config.get("params", {}),
         )
+        if env is None:  # Assuming create_environment might return None on failure
+            print("Error: Environment creation failed.")
+            if mlflow_run_id:
+                mlflow.set_tag("run_status", "env_creation_error")
+            sys.exit(1)
 
-        # Prepare agent parameters, separating network configs if present
-        agent_name = agent_config_from_yaml.get("name", "UnknownAgent")
-        agent_params = agent_config_from_yaml.get(
-            "params", {}
-        ).copy()  # Work with a copy
-
-        load_model_path = runner_config.get("load_model_path")
+        # --- Agent Preparation (Networks and Parameters) ---
         is_training = runner_config.get("is_training", True)
-        agent_params["is_training"] = (
-            is_training  # Add is_training for agents that use it in __init__
+        # This utility function handles creating networks if specified in agent_config_yaml
+        # and prepares the final parameter dictionary for the agent.
+        prepared_agent_params = prepare_agent_networks_and_params(
+            agent_config_yaml=agent_config_yaml, env=env, is_training=is_training
         )
 
-        # --- Network Creation (if applicable, e.g., for DQNAgent) ---
-        # Network configs are now expected under agent_params in YAML
-        # e.g., agent.params.online_network_config: {name: "MLPNetwork", params: {...}}
-        # or agent.params.network_config for single network agents that need it for load_model
+        # --- Agent Initialization (Create or Load) ---
+        # This utility function handles the logic for creating a new agent or loading a pre-trained one.
+        agent = initialize_agent(
+            agent_config_yaml=agent_config_yaml,
+            env=env,
+            runner_config=runner_config,  # For load_model_path and is_training
+            prepared_agent_params=prepared_agent_params,
+        )
 
-        online_network_config = agent_params.pop("online_network_config", None)
-        actor_network_config = agent_params.pop(
-            "actor_network_config", None
-        )  # For potential Actor-Critic
-        critic_network_config = agent_params.pop(
-            "critic_network_config", None
-        )  # For potential Actor-Critic
+        if agent is None:  # If agent initialization failed
+            print("Error: Agent initialization failed.")
+            if mlflow_run_id:
+                mlflow.set_tag("run_status", "agent_init_error")
+            sys.exit(1)
 
-        # Inject networks if their configs were provided
-        if online_network_config:
-            agent_params["online_network"] = create_nn_from_factory(
-                name=online_network_config.get("name"),
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                params=online_network_config.get("params", {}),
-            )
-            # For DQN, target network is usually identical to online initially
-            agent_params["target_network"] = create_nn_from_factory(
-                name=online_network_config.get("name"),
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                params=online_network_config.get("params", {}),
-            )
-
-        if actor_network_config:  # For Actor-Critic type agents
-            agent_params["actor_network"] = create_nn_from_factory(
-                name=actor_network_config.get("name"),
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                params=actor_network_config.get("params", {}),
-            )
-        if critic_network_config:  # For Actor-Critic type agents
-            agent_params["critic_network"] = create_nn_from_factory(
-                name=critic_network_config.get("name"),
-                observation_space=env.observation_space,  # Critic often sees state
-                action_space=gym.spaces.Discrete(1),  # Critic outputs a single value
-                params=critic_network_config.get("params", {}),
-            )
-
-        # If loading a model, the agent's load_model method might need network_config
-        # to reconstruct networks if they are not passed directly.
-        # The DQNAgent.load_model was updated to expect network_config in **kwargs.
-        if not is_training and load_model_path and agent_name == "DQNAgent":
-            # If online_network_config was used to define the architecture for loading
-            if online_network_config:
-                agent_params["network_config"] = online_network_config
-            # If a generic "network_config" was provided for loading, it's already in agent_params
-
-        # --- Agent Creation / Loading ---
-        if not is_training and load_model_path:
-            print(
-                f"Loading pre-trained agent '{agent_name}' from local path: {load_model_path}"
-            )
-            if agent_name not in AGENT_REGISTRY:
-                print(f"Error: Agent name '{agent_name}' not found in AGENT_REGISTRY.")
-                sys.exit(1)
-            agent_class = AGENT_REGISTRY[agent_name]
-
-            # Pass necessary spaces and all other agent_params (which might include network_config for DQNAgent.load_model)
-            agent = agent_class.load_model(
-                path=load_model_path,
-                observation_space=env.observation_space,  # Essential for load_model
-                action_space=env.action_space,  # Essential for load_model
-                **agent_params,  # Contains other agent hyperparams, and potentially network_config
-            )
-
-            if hasattr(agent, "is_training"):
-                agent.is_training = False  # Ensure eval mode
-            if hasattr(agent, "epsilon") and hasattr(agent, "epsilon_min"):
-                agent.epsilon = agent.epsilon_min
-        else:
-            agent = create_agent(
-                name=agent_name,
-                params=agent_params,  # Contains agent hyperparams and injected networks if any
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-            )
-
+        # --- Runner Setup and Execution ---
+        # Pass mlflow_run_id to Runner so it can log metrics to the correct run
         runner_config["mlflow_run_id"] = mlflow_run_id
-        runner = Runner(agent=agent, env=env, **runner_config)
+        runner = Runner(
+            agent=agent,
+            env=env,
+            **runner_config,  # Unpack all runner params from config
+        )
 
         try:
+            print("Starting experiment run...")
             runner.run()
+            if mlflow_run_id:
+                mlflow.set_tag("run_status", "completed")
+            print("Experiment run completed successfully.")
         except Exception as e:
             print(f"Error during runner.run(): {e}")
-            mlflow.set_tag("run_status", "failed")
-            mlflow.log_param("run_error", str(e)[:250])
-            raise
-        else:
-            mlflow.set_tag("run_status", "completed")
+            if mlflow_run_id:
+                mlflow.set_tag("run_status", "failed_in_runner")
+                mlflow.log_param("runner_error", str(e)[:250])
+            raise  # Re-raise the exception after logging
 
-    print("MLflow run finished.")
+    print("MLflow run finished (if active). Main script execution complete.")
 
 
 if __name__ == "__main__":
