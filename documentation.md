@@ -20,44 +20,44 @@ The project is organized as follows:
 assignment02/
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── main.py                 # Single entry point for all experiments
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── configs/                # YAML configuration files for experiments
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── ql_train_discrete.yaml
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── sarsa_train_discrete.yaml
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── sarsa_eval_discrete.yaml
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── dqn_fcn_train_move_to_beacon_discrete.yaml  # DQN with MLP
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── dqn_cnn_train_move_to_beacon_full.yaml    # DQN with CNN
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── dqn_cnn_train_defeat_roaches.yaml       # DQN with CNN
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── ddqn_fcn_train_move_to_beacon_discrete.yaml # DDQN with MLP
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── ddqn_cnn_train_move_to_beacon_full.yaml   # DDQN with CNN
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── ddqn_cnn_train_defeat_roaches.yaml      # DDQN with CNN
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── random_agent_discrete.yaml
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   └── basic_agent_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ql_train_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── sarsa_train_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── sarsa_eval_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqn_fcn_train_move_to_beacon_discrete.yaml  # DQN with MLP
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqn_cnn_train_move_to_beacon_full.yaml    # DQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqn_cnn_train_defeat_roaches.yaml       # DQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ddqn_fcn_train_move_to_beacon_discrete.yaml # DDQN with MLP
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ddqn_cnn_train_move_to_beacon_full.yaml   # DDQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ddqn_cnn_train_defeat_roaches.yaml      # DDQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── random_agent_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── basic_agent_discrete.yaml
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── agents/
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── **init**.py
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── abstractAgent.py      # Abstract base class for all agents
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── tableAgent.py         # Base class for Q-Learning and SARSA
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── qlAgent.py            # Q-Learning agent implementation
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── sarsaAgent.py         # SARSA agent implementation
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── dqnAgent.py           # DQN and DDQN agent implementation
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── randomAgent.py        # Agent selecting random actions
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── basicAgent.py         # Heuristic-based agent
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   └── factory.py            # Factory to create agent instances
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── abstractAgent.py      # Abstract base class for all agents
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── tableAgent.py         # Base class for Q-Learning and SARSA
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── qlAgent.py            # Q-Learning agent implementation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── sarsaAgent.py         # SARSA agent implementation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqnAgent.py           # DQN and DDQN agent implementation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── randomAgent.py        # Agent selecting random actions
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── basicAgent.py         # Heuristic-based agent
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── factory.py            # Factory to create agent instances
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── networks/                 # Neural network architectures and factory
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── **init**.py
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── base.py               # Abstract BaseNetwork class
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── architectures.py      # Concrete MLPNetwork, CNNNetwork classes
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   └── factory.py            # Factory to create network instances
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── base.py               # Abstract BaseNetwork class
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── architectures.py      # Concrete MLPNetwork, CNNNetwork classes
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── factory.py            # Factory to create network instances
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── env/
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── **init**.py
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── env_discrete.py       # MoveToBeaconDiscreteEnv wrapper
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── env_full.py           # MoveToBeaconEnv (visual) wrapper
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── dr_env.py             # DefeatRoachesEnv wrapper
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── utils.py              # Utility functions for environments
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   └── factory.py            # Factory to create environment instances
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── env_discrete.py       # MoveToBeaconDiscreteEnv wrapper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── env_full.py           # MoveToBeaconEnv (visual) wrapper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dr_env.py             # DefeatRoachesEnv wrapper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── utils.py              # Utility functions for environments
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── factory.py            # Factory to create environment instances
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── runner/
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   ├── **init**.py
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│   └── runner.py             # Experiment runner class
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── runner.py             # Experiment runner class
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── models/                   # Default local directory for saving trained models
-<br>&nbsp;&nbsp;&nbsp;&nbsp;│                               # (MLflow also stores model artifacts)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# (MLflow also stores model artifacts)
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── logs/                     # Default local directory for saving TensorBoard logs
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── mlruns/                   # Default local directory for MLflow tracking data
 <br>&nbsp;&nbsp;&nbsp;&nbsp;├── .venv/                    # Virtual environment directory (example)
@@ -192,29 +192,26 @@ Resuming training exactly where it left off requires saving and loading not just
   * **Model Weights:** Saved and loaded.
   * **Optimizer State:** **Not currently saved/loaded.** When a model is loaded, a new optimizer is created.
   * **Replay Memory:** **Not currently saved/loaded.** A fresh, empty replay memory is created.
-  * **Episode Number/Epsilon:** The `Runner` starts episodes from 1. Epsilon starts from its initial value.
+  * **Episode Number/Epsilon:** The `Runner` starts episodes from 1. Epsilon starts from its initial value when a new agent is created for training. When loading a model for *evaluation*, epsilon is set to its minimum. For resuming training, current epsilon would need to be restored.
 
 * **To Implement Full Resumability (Future Enhancement):**
     1. **Saving State:**
         * Modify `DQNAgent.save_model` (and `TableBasedAgent.save_model` if relevant) to save a dictionary containing:
-            * `model_state_dict` (already done)
+            * `model_state_dict` (already done for `DQNAgent`)
             * `optimizer_state_dict` (`self.optimizer.state_dict()`)
             * `replay_memory_buffer` (convert `self.memory.memory` deque to a list)
-            * `current_step_counter` (`self._step_counter`)
+            * `_step_counter` (`self._step_counter`)
             * `current_epsilon` (`self.epsilon`)
-        * The `Runner` would need to save its `current_episode_num` and `total_score_runner`. This could be done in a separate checkpoint file associated with the MLflow run or the model save directory.
-    2. **Loading State:**
-        * Modify `DQNAgent.load_model` to load these components:
-            * Load `model_state_dict` (already done).
-            * Load `optimizer_state_dict` into `self.optimizer`.
-            * Re-populate `self.memory` from the saved buffer.
-            * Restore `self._step_counter` and `self.epsilon`.
-        * `main.py` or `Runner` would need a way to load the runner's state (start episode, score). A `resume_from_run_id` feature in `main.py` could fetch the last saved episode from MLflow tags/artifacts of a previous run.
+            * (For `TableBasedAgent`, it saves `q_table` and `index_offset`; would also need to save `epsilon`).
+        * The `Runner` would need to save its `current_episode_num` and `total_score_runner`. This could be logged to MLflow or saved in a checkpoint file.
+    2. **Loading State (for resuming training):**
+        * Modify agent `load_model` methods to accept an optional flag like `load_training_state=True`. If true, they would load the optimizer state, replay memory, step counter, and epsilon.
+        * `main.py` or `Runner` would need a way to load the runner's state (start episode, current total score). The `runner.is_training` flag would be true. `runner.load_model_path` would point to the checkpoint.
     3. **YAML Configuration for Resuming:**
-        * Add a `runner.resume_run_id` (MLflow run ID) or `runner.resume_checkpoint_path` to the YAML.
-        * `main.py` would use this to load the full training state.
+        * Add a `runner.resume_checkpoint_path` to the YAML.
+        * `main.py` would use this to trigger the full state loading for resuming training.
 
-    *This full resumability is a significant feature and is not implemented in the current refactored version based on our discussion so far, but the modular structure makes it easier to add.*
+    *This full resumability is a significant feature not currently implemented but the modular structure supports adding it.*
 
 ## 5. How to Modify or Extend
 
@@ -250,5 +247,3 @@ Resuming training exactly where it left off requires saving and loading not just
       params:
         custom_param1: value1
     ```
-
-This documentation should provide a solid understanding of the refactored project.
