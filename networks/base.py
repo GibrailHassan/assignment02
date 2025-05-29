@@ -1,7 +1,7 @@
-# networks/base.py
 """
 Defines an abstract base class for all neural network models.
 """
+
 from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn

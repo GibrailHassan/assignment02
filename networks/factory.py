@@ -1,4 +1,3 @@
-# networks/factory.py
 """
 A factory for creating neural network architectures.
 This module provides a centralized way to instantiate network objects based on a

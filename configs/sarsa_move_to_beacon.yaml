@@ -1,5 +1,3 @@
-# configs/sarsa_move_to_beacon.yaml
-#
 # This configuration file defines all the parameters needed to run an experiment
 # with the SARSA agent on the discrete MoveToBeacon environment.
 # Using config files like this allows for easy-to-read, reproducible, and

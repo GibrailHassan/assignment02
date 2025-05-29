@@ -1,5 +1,3 @@
-# configs/ddqn_fcn_train_move_to_beacon_discrete.yaml
-#
 # Trains a Double DQN (DDQN) agent with a Fully Connected Network (MLP)
 # on the MoveToBeaconDiscreteEnv, using modular network config.
 

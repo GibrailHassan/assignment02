@@ -1,5 +1,3 @@
-# configs/ddqn_cnn_train_move_to_beacon_full.yaml
-#
 # Trains a Double DQN (DDQN) agent with a CNN
 # on the MoveToBeaconEnv (full visual features), using modular network config.
 

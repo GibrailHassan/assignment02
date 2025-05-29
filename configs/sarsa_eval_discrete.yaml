@@ -1,5 +1,3 @@
-# configs/sarsa_eval_discrete.yaml
-#
 # Evaluates a pre-trained SARSA agent on the MoveToBeaconDiscreteEnv.
 # This configuration replaces the 'run_eval_sarsa.py' script.
 

@@ -1,5 +1,3 @@
-# agents/dqnAgent.py
-
 """
 Implementation of a Deep Q-Network (DQN) agent, with optional Double DQN (DDQN) support.
 This agent now receives its neural networks via dependency injection.

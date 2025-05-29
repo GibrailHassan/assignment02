@@ -1,5 +1,3 @@
-# agents/factory.py
-
 """
 A factory for creating and registering reinforcement learning agents.
 """

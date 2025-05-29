@@ -1,5 +1,3 @@
-# configs/ddqn_cnn_train_defeat_roaches.yaml
-#
 # Trains a Double DQN (DDQN) agent with a CNN
 # on the DefeatRoachesEnv, using modular network config.
 

@@ -1,5 +1,3 @@
-# configs/dqn_cnn_train_defeat_roaches.yaml
-#
 # Trains a DQN agent with a Convolutional Neural Network (CNN)
 # on the DefeatRoachesEnv, using the modular network configuration.
 

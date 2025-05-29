@@ -1,5 +1,3 @@
-# agents/sarsaAgent.py
-
 """
 Implements the SARSA algorithm by inheriting from the TableBasedAgent.
 

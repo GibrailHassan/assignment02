@@ -1,5 +1,3 @@
-# configs/basic_agent_discrete.yaml
-#
 # Runs a BasicAgent (heuristic-based) on the MoveToBeaconDiscreteEnv.
 # This is one of the options from the original 'run_basic.py' script.
 

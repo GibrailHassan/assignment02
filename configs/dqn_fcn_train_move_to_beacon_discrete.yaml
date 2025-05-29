@@ -1,5 +1,3 @@
-# configs/dqn_fcn_train_move_to_beacon_discrete.yaml
-#
 # Trains a DQN agent with a Fully Connected Network (MLP)
 # on the MoveToBeaconDiscreteEnv (vector-based state),
 # using the modular network configuration.

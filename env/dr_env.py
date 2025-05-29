@@ -1,20 +1,14 @@
-# env/dr_env.py
-
-import datetime
 import gym
 import numpy as np
-import os
 
-# import sys # Not used directly
+
 from typing import Any, Dict, Tuple  # Added Any here
 from gym.spaces import Discrete, Box
 from pysc2.env import sc2_env
 from pysc2.lib import actions, features
 
-# from torch.utils.tensorboard import SummaryWriter # Not used by this class
 
-
-class DefeatRoachesEnv(gym.Env):
+class DefeatRoachesEnv(gym.Env[np.ndarray[Any, np.dtype[np.int32]], int]):
 
     def __init__(
         self,

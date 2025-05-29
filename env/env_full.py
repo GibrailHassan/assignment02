@@ -1,5 +1,3 @@
-# env/env_full.py
-
 """
 A StarCraft II environment wrapper for the 'MoveToBeacon' mini-game
 that provides the full visual screen features as the state.

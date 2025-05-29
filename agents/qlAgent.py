@@ -1,5 +1,3 @@
-# agents/qlAgent.py
-
 """
 Implements the Q-Learning algorithm by inheriting from the TableBasedAgent.
 

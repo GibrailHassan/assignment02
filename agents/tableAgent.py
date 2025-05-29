@@ -1,5 +1,3 @@
-# agents/tableAgent.py
-
 """
 Defines a base class for table-based reinforcement learning agents,
 now with MLflow model artifact logging.

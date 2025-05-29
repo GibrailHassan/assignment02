@@ -1,5 +1,3 @@
-# agents/basicAgent.py
-
 """
 This module defines a BasicAgent class that inherits from AbstractAgent.
 The BasicAgent selects actions based on a straightforward heuristic calculation,

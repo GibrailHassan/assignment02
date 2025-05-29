@@ -1,5 +1,3 @@
-# env/factory.py
-
 """
 A factory for creating and registering game environments.
 
@@ -9,7 +7,7 @@ application logic from the concrete environment implementations, making it easy
 to add new environments without changing the core training code.
 """
 
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Optional
 import gym
 
 from env.env_discrete import MoveToBeaconDiscreteEnv
@@ -25,7 +23,7 @@ ENV_REGISTRY: Dict[str, Type[gym.Env]] = {
 }
 
 
-def create_environment(name: str, params: Dict[str, Any] = None) -> gym.Env:
+def create_environment(name: str, params: Optional[Dict[str, Any]] = None) -> gym.Env:
     """
     Instantiates an environment object from its registered name.
 

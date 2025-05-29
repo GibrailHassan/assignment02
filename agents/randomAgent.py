@@ -1,5 +1,3 @@
-# agents/randomAgent.py
-
 """
 This module defines a RandomAgent class, which inherits from AbstractAgent.
 The RandomAgent selects actions randomly from the available action space.

@@ -1,5 +1,3 @@
-# configs/dqn_train_defeat_roaches.yaml
-#
 # Trains a DQN agent on the DefeatRoachesEnv.
 # This configuration replaces the 'run_dr_env.py' script.
 

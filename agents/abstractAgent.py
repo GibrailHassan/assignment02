@@ -1,5 +1,3 @@
-# agents/abstractAgent.py
-
 """
 This module defines the AbstractAgent class, an abstract base class (ABC)
 that outlines the common interface for all reinforcement learning agents.
