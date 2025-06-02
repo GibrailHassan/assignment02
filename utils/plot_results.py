@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import mlflow
 from mlflow.tracking import MlflowClient
+from typing import Dict
 
 # Define metrics you want to plot
 # Format: {"Metric Name in MLflow": "Plot Y-axis Label"}
