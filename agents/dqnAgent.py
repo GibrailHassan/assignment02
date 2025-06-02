@@ -1,6 +1,6 @@
 """
 Implementation of a Deep Q-Network (DQN) agent, with optional Double DQN (DDQN) support.
-This agent now receives its neural networks via dependency injection.
+This agent now receives its neural networks via dependency injection and logs models to MLflow.
 """
 
 import os
@@ -18,7 +18,7 @@ import torch.optim as optim
 import mlflow
 
 from agents.abstractAgent import AbstractAgent
-from networks.base import BaseNetwork  # Import BaseNetwork from the new networks module
+from networks.base import BaseNetwork
 
 Transition = namedtuple(
     "Transition", ("state", "action", "reward", "next_state", "done")
@@ -55,8 +55,8 @@ class DQNAgent(AbstractAgent):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        online_network: BaseNetwork,  # Injected online network
-        target_network: BaseNetwork,  # Injected target network
+        online_network: BaseNetwork,
+        target_network: BaseNetwork,
         enable_ddqn: bool = False,
         learning_rate: float = 0.00025,
         discount_factor: float = 0.99,
@@ -69,37 +69,12 @@ class DQNAgent(AbstractAgent):
         is_training: bool = True,
         **kwargs: Any,
     ):
-        """
-        Initializes the DQNAgent.
-
-        Args:
-            observation_space (gym.Space): The environment's observation space.
-            action_space (gym.Space): The environment's action space.
-            online_network (BaseNetwork): The primary Q-network.
-            target_network (BaseNetwork): The target Q-network.
-            enable_ddqn (bool): If True, DDQN target calculation will be used.
-            learning_rate (float): Learning rate for the optimizer.
-            discount_factor (float): Gamma for future rewards.
-            initial_epsilon (float): Starting value for epsilon.
-            epsilon_decay_rate (float): Amount to linearly decay epsilon by per step.
-            epsilon_min (float): Minimum epsilon value.
-            target_update_freq (int): Frequency (in steps) to update the target network.
-            memory_capacity (int): Maximum size of the replay memory.
-            batch_size (int): Batch size for sampling from replay memory.
-            is_training (bool): Indicates if the agent is in training mode.
-            **kwargs (Any): Additional keyword arguments.
-        """
-        super().__init__(
-            observation_space, action_space
-        )  # Pass observation_space and action_space
+        super().__init__(observation_space, action_space)
 
         self.enable_ddqn = enable_ddqn
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(
-            f"DQNAgent using device: {self.device}{' (DDQN enabled)' if self.enable_ddqn else ''}"
-        )
+        # print(f"DQNAgent using device: {self.device}{' (DDQN enabled)' if self.enable_ddqn else ''}") # Already printed in main
 
-        # Ensure the injected networks are nn.Module instances
         if not isinstance(online_network, nn.Module) or not isinstance(
             target_network, nn.Module
         ):
@@ -136,7 +111,6 @@ class DQNAgent(AbstractAgent):
         current_epsilon = self.epsilon if effective_is_training else 0.0
 
         if np.random.rand() < current_epsilon:
-            # Ensure action_space is Discrete for .sample()
             if not isinstance(self.action_space, gym.spaces.Discrete):
                 raise TypeError(
                     "DQNAgent get_action requires a Discrete action space to sample from."
@@ -145,8 +119,6 @@ class DQNAgent(AbstractAgent):
 
         state_tensor = torch.as_tensor(state, dtype=torch.float32).to(self.device)
 
-        # The BaseNetwork's forward method should handle permutations if necessary
-        # Add batch dimension if it's a single processed state
         if state_tensor.ndim == len(self.observation_space.shape):
             state_tensor = state_tensor.unsqueeze(0)
 
@@ -166,7 +138,7 @@ class DQNAgent(AbstractAgent):
 
         batch = Transition(*zip(*transitions))
 
-        states_np = np.array(batch.state, dtype=np.float32)  # Ensure float32 for states
+        states_np = np.array(batch.state, dtype=np.float32)
         next_states_np = np.array(batch.next_state, dtype=np.float32)
 
         states = torch.as_tensor(states_np).to(self.device)
@@ -180,7 +152,6 @@ class DQNAgent(AbstractAgent):
             .view(-1, 1)
             .to(self.device)
         )
-        # Ensure dones are boolean, then convert to float for multiplication if needed, or use ~ for bool negation
         dones = (
             torch.as_tensor(batch.done, dtype=torch.bool).view(-1, 1).to(self.device)
         )
@@ -260,24 +231,62 @@ class DQNAgent(AbstractAgent):
     def get_update_info(self) -> Dict[str, Any]:
         return {"epsilon": self.epsilon, "steps": self._step_counter}
 
-    def save_model(self, path: str, filename: str = "dqn_online_nn.pt") -> str:
+    def save_model(self, path: str, filename: str = "dqn_online_nn.pt") -> str | None:
+        """
+        Saves the online network's state_dict locally and logs the model to MLflow.
+
+        Args:
+            path (str): The directory path to save the local model file.
+            filename (str): The name for the locally saved model file.
+
+        Returns:
+            str | None: The full path to the locally saved model file, or None if saving failed.
+        """
+        if not path:  # If model_save_dir was empty in config
+            print(
+                "Local model saving path not provided, skipping local save for DQNAgent."
+            )
+            # Still attempt to log to MLflow if active run
+            if mlflow.active_run():
+                try:
+                    mlflow.pytorch.log_model(
+                        pytorch_model=self.online_nn,
+                        artifact_path="pytorch_models",
+                        # registered_model_name=f"{type(self).__name__}_model" # Optional
+                    )
+                    print(
+                        f"DQN model logged as MLflow PyTorch artifact to 'pytorch_models' (local save skipped)."
+                    )
+                except Exception as e:
+                    print(
+                        f"Warning: Failed to log DQN model to MLflow (local save skipped): {e}"
+                    )
+            return None  # No local path to return
+
         os.makedirs(path, exist_ok=True)
         model_file_path = os.path.join(path, filename)
-        torch.save(self.online_nn.state_dict(), model_file_path)
-        print(f"DQN model (online_nn) saved locally to {model_file_path}")
 
-        if mlflow.active_run():
-            try:
-                mlflow.pytorch.log_model(
-                    pytorch_model=self.online_nn,
-                    artifact_path="pytorch_models",
-                )
-                print(
-                    f"DQN model also logged as MLflow PyTorch artifact to 'pytorch_models'."
-                )
-            except Exception as e:
-                print(f"Warning: Failed to log DQN model to MLflow: {e}")
-        return model_file_path
+        try:
+            torch.save(self.online_nn.state_dict(), model_file_path)
+            print(f"DQN model (online_nn) saved locally to {model_file_path}")
+
+            # --- MLflow PyTorch Model Logging ---
+            if mlflow.active_run():
+                try:
+                    mlflow.pytorch.log_model(
+                        pytorch_model=self.online_nn,
+                        artifact_path="pytorch_models",
+                        # registered_model_name=f"{type(self).__name__}_model" # Optional
+                    )
+                    print(
+                        f"DQN model also logged as MLflow PyTorch artifact to 'pytorch_models'."
+                    )
+                except Exception as e:
+                    print(f"Warning: Failed to log DQN model to MLflow: {e}")
+            return model_file_path
+        except Exception as e:
+            print(f"Error saving DQN model locally: {e}")
+            return None
 
     @classmethod
     def load_model(
@@ -288,8 +297,6 @@ class DQNAgent(AbstractAgent):
                 "observation_space and action_space must be provided in kwargs for DQNAgent.load_model"
             )
 
-        # Networks must be provided or reconstructed.
-        # The parameters for network reconstruction (network_config) should be in kwargs.
         online_network = kwargs.pop("online_network", None)
         target_network = kwargs.pop("target_network", None)
 
@@ -319,21 +326,20 @@ class DQNAgent(AbstractAgent):
                 params=network_config.get("params", {}),
             )
 
-        # Ensure is_training is properly set for the new instance, defaulting to False for loaded models
         kwargs.setdefault("is_training", False)
 
-        # Create the instance, passing the (now ensured) networks
         instance = cls(
             online_network=online_network, target_network=target_network, **kwargs
         )
 
         model_file_path = os.path.join(path, filename)
 
+        if not os.path.exists(model_file_path):
+            print(f"Error: Model file not found at {model_file_path}")
+            raise FileNotFoundError(f"Model file not found at {model_file_path}")
+
         try:
             model_state_dict = torch.load(model_file_path, map_location=instance.device)
-        except FileNotFoundError:
-            print(f"Error: Model file not found at {model_file_path}")
-            raise
         except Exception as e:
             print(f"Error loading model state_dict from {model_file_path}: {e}")
             raise

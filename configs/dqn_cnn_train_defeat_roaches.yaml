@@ -9,7 +9,7 @@ environment:
   params:
     screen_size: 32
     step_mul: 8
-    is_visualize: false # Original run_dr_env.py had True, adjust as needed
+    is_visualize: false
 
 # --- Agent Configuration ---
 agent:
@@ -17,17 +17,16 @@ agent:
   params:
     # Agent-specific algorithm params
     enable_ddqn: false
-    learning_rate: 0.0025 # From original run_dr_env.py
-    discount_factor: 0.99 # From original run_dr_env.py
+    learning_rate: 0.0025 
+    discount_factor: 0.99 
     initial_epsilon: 1.0
     # Original run_dr_env.py had epsilon_decay=0.9999 (multiplicative)
     # For linear decay per step: (1.0 - 0.1) / (e.g., 90000 steps) = 0.00001
-    # Let's assume a similar number of effective decay steps.
     epsilon_decay_rate: 0.00001 # Example linear decay rate
     epsilon_min: 0.1
-    target_update_freq: 50 # From original run_dr_env.py
-    memory_capacity: 10000 # From original run_dr_env.py
-    batch_size: 128 # From original run_dr_env.py
+    target_update_freq: 50
+    memory_capacity: 10000 
+    batch_size: 128 
     # learn_after_steps: 5000 # If your DQNAgent implements this based on self._step_counter
 
     # Network configuration
@@ -41,7 +40,7 @@ agent:
 
 # --- Runner Configuration ---
 runner:
-  total_episodes: 500 # From original run_dr_env.py
+  total_episodes: 10000 # From original run_dr_env.py
   is_training: true
   tensorboard_log_dir:
     "" # Original run_dr_env.py had this empty (disabled TB)

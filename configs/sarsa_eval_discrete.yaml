@@ -19,6 +19,10 @@ environment:
 agent:
   name: "SARSAAgent" # Must match the type of the saved model.
   params:
+    # learning_rate: 0.1 # Placeholder, not used for learning during evaluation.
+    # discount_factor: 0.99 # Placeholder, not used for learning during evaluation.
+    # initial_epsilon: 0.0 # Epsilon will be set by the loaded model.
+    # epsilon_decay: 0.0 # No decay during evaluation.
     # These hyperparameters are primarily for re-instantiating the agent class.
     # The loaded Q-table will define its actual behavior.
     # Epsilon will be set to its minimum for exploitation during evaluation.

@@ -1,229 +1,205 @@
-# Project Evolution: Implementing CNN-DQN and Usage Guide
+# Project Guide: Refactored RL Framework for StarCraft II
 
-This document outlines the key changes made to the project to implement a Deep Q-Network (DQN) agent with a Convolutional Neural Network (CNN) for the `FullMoveToBeaconEnv`. It also provides general instructions on how to use the current project structure and extend it with new algorithms or environments.
+## 1. Project Overview
 
-## 1. From MLP to CNN: The Need for Visual Processing
+This project provides a flexible and modular framework for developing, training, and evaluating Reinforcement Learning (RL) agents on StarCraft II mini-games using the PySC2 library. It has been refactored to promote best practices in software engineering, making it easier to manage experiments, reuse components, and extend with new algorithms or environments.
 
-The initial DQN agent, as per Assignment 2, was designed with a Multi-Layer Perceptron (MLP) defined in `agents/NN_model.py` (the `Model` class). This MLP is suitable for environments with low-dimensional, vector-based state representations, like the `MoveToBeaconDiscreteEnv`.
+**Key Features:**
 
-However, the `FullMoveToBeaconEnv` (from `env/env_full.py`) provides a much richer, image-like state representation derived from the StarCraft II screen features (e.g., `player_relative` and `unit_density` layers). To effectively learn from this visual input, a CNN is required. CNNs are specifically designed to process spatial data, identify patterns, and extract relevant features from images.
+* **Modularity:** Clear separation of concerns between agents, environments, neural network architectures, the experiment runner, and utility functions.
+* **Configuration-Driven:** Experiments are defined and controlled by human-readable YAML files, eliminating hardcoded parameters in scripts.
+* **Extensibility:** Easily add new RL agents, custom environments, or neural network architectures using factory patterns and abstract base classes.
+* **Unified Experiment Management:** A single `main.py` script serves as the entry point for all training and evaluation tasks.
+* **Experiment Tracking:** Integrated with MLflow for comprehensive tracking of parameters, metrics, and artifacts (including models and configuration files). TensorBoard is also supported for granular, step-by-step visualization.
+* **Support for Various RL Algorithms:** Includes implementations for table-based methods (Q-Learning, SARSA) and deep learning methods (DQN, with support for DDQN).
+* **Utility Functions:** Common tasks like MLflow setup, configuration loading, and metric logging are centralized in a utility module for cleaner main scripts.
 
-## 2. Key Changes Made to Implement CNN-DQN
+## 2. Directory and File Structure
 
-The following modifications were made to the codebase to integrate a CNN into the DQN agent and ensure it works correctly with the `FullMoveToBeaconEnv`.
+The project is organized as follows:
 
-### 2.1. `agents/NN_model.py`: Defining the CNN Architecture
+assignment02/
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── main.py                 # Single entry point for all experiments
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── configs/                # YAML configuration files for experiments
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ql_train_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── sarsa_train_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── sarsa_eval_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqn_fcn_train_move_to_beacon_discrete.yaml  # DQN with MLP
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqn_cnn_train_move_to_beacon_full.yaml    # DQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqn_cnn_train_defeat_roaches.yaml       # DQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ddqn_fcn_train_move_to_beacon_discrete.yaml # DDQN with MLP
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ddqn_cnn_train_move_to_beacon_full.yaml   # DDQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── ddqn_cnn_train_defeat_roaches.yaml      # DDQN with CNN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── random_agent_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── basic_agent_discrete.yaml
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── agents/
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── abstractAgent.py      # Abstract base class for all agents
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── tableAgent.py         # Base class for Q-Learning and SARSA
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── qlAgent.py            # Q-Learning agent implementation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── sarsaAgent.py         # SARSA agent implementation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dqnAgent.py           # DQN and DDQN agent implementation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── randomAgent.py        # Agent selecting random actions
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── basicAgent.py         # Heuristic-based agent
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── factory.py            # Factory to create agent instances
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── networks/                 # Neural network architectures and factory
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── base.py               # Abstract BaseNetwork class
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── architectures.py      # Concrete MLPNetwork, CNNNetwork classes
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── factory.py            # Factory to create network instances
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── env/
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── env_discrete.py       # MoveToBeaconDiscreteEnv wrapper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── env_full.py           # MoveToBeaconEnv (visual) wrapper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── dr_env.py             # DefeatRoachesEnv wrapper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── utils.py              # Utility functions specific to environments (original)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── factory.py            # Factory to create environment instances
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── runner/
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── runner.py             # Experiment runner class
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── utils/                    # NEW: General utility functions
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── **init**.py
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── experiment_utils.py   # Utilities for config, MLflow, logging, component setup
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── models/                   # Default local directory for saving trained models
+<br>&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# (MLflow also stores model artifacts)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── logs/                     # Default local directory for saving TensorBoard logs
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── mlruns/                   # Default local directory for MLflow tracking data
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── .venv/                    # Virtual environment directory (example)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;├── pyproject.toml            # Project metadata and dependencies (e.g., for uv)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;└── uv.lock                   # Lock file for uv (or requirements.txt for pip)
 
-* **New `CNNModel` Class:**
-    * A new class, `CNNModel`, was added to define the convolutional neural network.
-    * **Architecture:** The final, robust architecture for a 32x32 input with `input_channels` (e.g., 2 for `FullMoveToBeaconEnv`) is:
-        * `Conv2d(input_channels, 32, kernel_size=5, padding=2)` -> `ReLU` -> `MaxPool2d(2, 2)` (Output: 16x16x32)
-        * `Conv2d(32, 64, kernel_size=5, padding=2)` -> `ReLU` -> `MaxPool2d(2, 2)` (Output: 8x8x64)
-        * `Conv2d(64, 64, kernel_size=3, padding=1)` -> `ReLU` -> `MaxPool2d(2, 2)` (Output: 4x4x64)
-        * Flatten layer.
-        * `Linear(64 * 4 * 4, 512)` -> `ReLU`
-        * `Linear(512, num_actions)`
-    * This architecture uses padding to maintain feature map sizes within convolutional layers and max pooling for controlled down-sampling.
+*(Note: The `agents/NN_model.py` file has been effectively replaced by the `networks/` module. If you still have `agents/NN_model.py`, its contents should have been moved to `networks/architectures.py` and the file can be deleted or repurposed.)*
 
-* **`init_weights` Function:**
-    * This existing function, which applies Xavier uniform initialization, is used for both `Model` and `CNNModel` to ensure good starting weights.
+## 3. Core Components and Their Roles
 
-* **`CNNModel.forward()` Method:**
-    * The `forward` method was carefully designed to:
-        1.  Pass the input tensor `x` sequentially through all defined convolutional and pooling layers.
-        2.  **Handle Input Dimensions:** Crucially, it now checks if the input `x` is a single 3D state tensor (C, H, W) or a 4D batch of state tensors (B, C, H, W). If it's a single state, an `unsqueeze(0)` operation is performed to add a temporary batch dimension, as PyTorch's `Conv2d` layers expect a 4D input.
-        3.  Flatten the output of the convolutional/pooling stack before passing it to the fully connected layers.
+### 3.1. `main.py`: The Central Hub
 
-### 2.2. `agents/dqnAgent.py`: Adapting the DQN Agent
+* **Purpose:** The single script to run any experiment (training or evaluation).
+* **Functionality:**
+    1. Parses the `--config` command-line argument.
+    2. Calls `utils.experiment_utils.load_config` to load the YAML configuration.
+    3. Initializes MLflow and starts a run; then calls `utils.experiment_utils.setup_mlflow_run` to log parameters and the config artifact.
+    4. Uses `env.factory.create_environment` to create the environment.
+    5. Calls `utils.experiment_utils.prepare_agent_networks_and_params` to handle network creation (using `networks.factory`) and prepare the full parameter set for the agent.
+    6. Calls `utils.experiment_utils.initialize_agent` which in turn uses `agents.factory.create_agent` or the agent's `load_model` method.
+    7. Instantiates the `Runner`.
+    8. Calls `runner.run()` and handles overall run status logging to MLflow.
+    9. Ensures MLflow run is ended.
 
-* **`__init__` Method:**
-    * A `use_cnn: bool = False` parameter was added to the constructor. This flag determines whether the agent should use the MLP (`Model`) or the `CNNModel`.
-* **`_create_network()` Method:**
-    * This helper method was modified to instantiate either `Model` or `CNNModel` based on the `self.use_cnn` flag. It correctly passes `input_channels` (derived from `state_shape`) and `num_actions` to the `CNNModel` constructor.
-* **Tensor Handling in `get_action()` and `update()`:**
-    * `get_action()`: When selecting an action for a single state, the state tensor is passed to `online_nn.forward()`. The fix in `CNNModel.forward()` ensures this 3D tensor is handled correctly.
-    * `update()` (specifically `_get_sample_from_memory` and `_calculate_loss`): When training on a batch of experiences, the state tensors are already in the correct 4D batch format.
-* **`save_model()` and `load_model()` Methods:**
-    * These methods were fully implemented to save and load the `state_dict` of the `online_nn`. The `load_model` class method now correctly instantiates a new agent and loads the weights into both its `online_nn` and `target_nn`.
+### 3.2. `configs/*.yaml`: Experiment Definitions
 
-### 2.3. `env/env_full.py`: Correcting Action Space
+* **Purpose:** Define all parameters for an experiment.
+* **Structure:**
+  * `experiment_name`: Used for MLflow experiment grouping.
+  * `environment`: Contains `name` (registered in `env/factory.py`) and `params` for the environment.
+  * `agent`: Contains `name` (registered in `agents/factory.py`) and `params`.
+    * For network-based agents like `DQNAgent`, `agent.params` will include network configurations (e.g., `online_network_config: {name: "CNNNetwork", params: {...}}`) and algorithm-specific hyperparameters (e.g., `learning_rate`, `enable_ddqn`).
+  * `runner`: Contains parameters for the `Runner` class (e.g., `total_episodes`, `is_training`, `load_model_path`, logging directories, save frequency).
 
-* **`action_shape` Property:**
-    * A critical bug was fixed where this property was returning `(num_actions,)` instead of `range(num_actions)`.
-    * The corrected version `return range(self.action_space.n)` ensures that `len(env.action_shape)` gives the correct number of actions and `random.choice(env.action_shape)` samples a valid action index. This resolved a `KeyError` during action execution.
+### 3.3. `utils/experiment_utils.py`: Helper Functions
 
-### 2.4. New Run Script: `run_full_move_to_beacon.py`
+* **Purpose:** To make `main.py` and `runner.py` more concise by encapsulating common or complex setup and logging logic.
+* **Key Functions:**
+  * `load_config(config_file_path)`: Loads and parses YAML configuration.
+  * `setup_mlflow_run(config, config_file_path)`: Initializes MLflow experiment, logs parameters from the config, and logs the config file itself as an artifact. To be called within an active `mlflow.start_run()` context.
+  * `prepare_agent_networks_and_params(agent_config_yaml, env, is_training)`: Reads network configurations from `agent_config_yaml`, uses `networks.factory.create_network` to build network instances, and returns a consolidated dictionary of parameters for the agent (including injected networks).
+  * `initialize_agent(agent_config_yaml, env, runner_config, prepared_agent_params)`: Handles the logic to either create a new agent (using `agents.factory.create_agent`) or load a pre-trained one (using `AgentClass.load_model`), based on `runner_config.is_training` and `runner_config.load_model_path`.
+  * `log_metrics_to_tensorboard(writer, metrics, episode_num, prefix)`: Logs a dictionary of metrics to TensorBoard.
+  * `log_metrics_to_mlflow(metrics, episode_num, prefix)`: Logs a dictionary of metrics to the active MLflow run.
 
-* A new script was created specifically for running experiments with the `FullMoveToBeaconEnv` and the CNN-enabled DQN.
-* **Configuration:**
-    * It imports `MoveToBeaconEnv` from `env.env_full`.
-    * It sets `use_cnn=True` in the agent's configuration dictionary.
-    * It includes hyperparameters suitable for training a CNN (e.g., smaller learning rate, larger replay buffer, appropriate epsilon decay for longer training).
+### 3.4. `runner/runner.py`: The Experiment Orchestrator
 
-### 2.5. Iterative Debugging
+* **Purpose:** Manages the agent-environment interaction loop.
+* **Key Features:**
+  * Uses `utils.experiment_utils.log_metrics_to_tensorboard` and `utils.experiment_utils.log_metrics_to_mlflow` within its `summarize()` method for cleaner metric logging.
+  * Handles episode loop, calls agent methods like `get_action`, `update`, `on_episode_start`, `on_episode_end`.
+  * Triggers local model saving by calling `agent.save_model()`.
 
-The process to arrive at the final working CNN model involved several iterations of debugging:
-1.  **Initial `TypeError`:** The `DQNAgent` was missing implementations for `save_model` and `load_model`.
-2.  **`KeyError` in `env_full.py`:** The `action_shape` property was incorrect, causing invalid action indices.
-3.  **`RuntimeError` (Kernel size > input size):** The initial CNN architecture was too aggressive in down-sampling for a 32x32 input. This was fixed with a more robust CNN design using padding and max pooling.
-4.  **`RuntimeError` (mat1 and mat2 shapes cannot be multiplied):** This occurred because the `CNNModel.forward()` method was not correctly passing the input through all layers, and later because it didn't handle single 3D state inputs (from `get_action`) versus 4D batched inputs (from `update`). Both issues were resolved by correcting the `forward` pass logic.
+### 3.5. `agents/` Module: The Learning Algorithms
 
-## 3. General Instructions for Using and Modifying the Project
+* **`abstractAgent.py`**: Defines the `AbstractAgent` interface (methods: `__init__`, `get_action`, `update`, `on_episode_start`, `on_episode_end`, `get_update_info`, `save_model`, `load_model`).
+* **`tableAgent.py`**: Base class for Q-Learning and SARSA. Handles Q-table sizing, index offset, `save_model` (with MLflow artifact logging), `load_model` (with `weights_only=False` and space reconstruction).
+* **`qlAgent.py`, `sarsaAgent.py`**: Inherit from `TableBasedAgent`, define specific `update` rules.
+* **`dqnAgent.py`**: Implements DQN/DDQN. Receives pre-built networks. Handles replay memory, target updates. `save_model` logs to MLflow. `load_model` reconstructs networks using `network_config`.
+* **`randomAgent.py`, `basicAgent.py`**: Implement `AbstractAgent` interface.
+* **`factory.py`**: `create_agent` function instantiates agents, passing `observation_space`, `action_space`, and `params` (which include injected networks for `DQNAgent`).
 
-This project is designed to be modular, allowing for easy experimentation and extension.
+### 3.6. `networks/` Module: Neural Network Architectures
 
-### 3.1. Running an Experiment
+* **`base.py`**: Defines `BaseNetwork(torch.nn.Module, ABC)`. Requires `forward` and takes `observation_space`, `action_space` in `__init__`.
+* **`architectures.py`**: Contains `MLPNetwork` and `CNNNetwork` (inheriting `BaseNetwork`). They are configurable via `__init__` parameters (e.g., `hidden_layers` for MLP, `conv_channels` for CNN) and use `observation_space`/`action_space` for input/output sizing.
+* **`factory.py`**: `create_network` function instantiates networks.
 
-1.  **Choose or Create a Run Script:**
-    * Use existing scripts like `run_dqn.py`, `run_ql.py`, or the new `run_full_move_to_beacon.py`.
-    * For new experiments, it's best to copy an existing script and modify it.
-2.  **Configure the Experiment:**
-    * Open your chosen run script (e.g., `run_my_experiment.py`).
-    * Modify the `config` dictionary:
-        * `config["env"]`: Specify environment parameters (e.g., `screen_size`, `is_visualize`).
-        * `config["agent"]`:
-            * Set the agent-specific parameters (e.g., `learning_rate`, `epsilon_decay`, `memory_capacity`).
-            * For `DQNAgent`, ensure `use_cnn` is set correctly (`True` for visual environments like `FullMoveToBeaconEnv`, `False` for vector environments like `MoveToBeaconDiscreteEnv`).
-            * The `state_shape` and `action_shape` in the agent config are typically overwritten by the actual shapes from the initialized environment.
-        * `config["runner"]`:
-            * `is_training`: Set to `True` for training, `False` for evaluation.
-            * `tensorboard_log_dir`: Specify a directory for TensorBoard logs.
-            * `save_model_each_episode_num`: Frequency to save the agent's model during training.
-            * `model_save_dir`: Directory to store saved models.
-        * `config["total_episodes"]`: The number of episodes to run the experiment for.
-3.  **Execute the Script:**
+### 3.7. `env/` Module: The Simulation Worlds
+
+* Contains PySC2 environment wrappers (`MoveToBeaconDiscreteEnv`, `MoveToBeaconEnv`, `DefeatRoachesEnv`) adhering to `gym.Env`.
+* `DefeatRoachesEnv._get_state()` returns a base `np.array(..., copy=True)`.
+* **`factory.py`**: `create_environment` function.
+
+## 4. How to Use the Framework
+
+### 4.1. Setup
+
+1. Ensure Python and StarCraft II (with maps) are installed.
+2. Create and activate a virtual environment.
+3. Install dependencies: `pysc2`, `gym`, `numpy`, `torch`, `absl-py`, `PyYAML`, `mlflow`, `tensorboard`. Use `uv sync` with `pyproject.toml` or `pip install -r requirements.txt`.
+
+### 4.2. Running an Experiment (Training)
+
+1. **Choose/Create YAML Config:** In `configs/` (e.g., `configs/dqn_cnn_train_defeat_roaches.yaml`).
+2. **Define Parameters:**
+    * Set `experiment_name`.
+    * Configure `environment` (`name`, `params`).
+    * Configure `agent` (`name`, `params`). For `DQNAgent`, `params` must include `online_network_config` (with `name` like "MLPNetwork" or "CNNNetwork", and its specific `params`) and `network_config` for loading consistency.
+    * Configure `runner` (`total_episodes`, `is_training: true`, etc.).
+3. **Execute:**
+
     ```bash
-    python your_run_script_name.py
+    python main.py --config=configs/your_config_file.yaml
     ```
 
-### 3.2. Evaluating a Trained Agent
+4. **Monitor:**
+    * MLflow UI: `mlflow ui` (then `http://localhost:5000`).
+    * TensorBoard: `tensorboard --logdir=./logs`.
 
-1.  **Adapt a Run Script:**
-    * In the agent configuration part of your run script, instead of creating a new agent directly, use the `load_model` class method:
-        ```python
-        # Example for DQNAgent
-        agent_config = config["agent"]
-        agent_config["state_shape"] = env.state_shape # Ensure these are set
-        agent_config["action_shape"] = env.action_shape
-        agent = DQNAgent.load_model(
-            path="path/to/your/saved_model_directory", 
-            filename="your_model_file.pt", 
-            **agent_config # Pass the original config used for training
-        )
-        ```
-2.  **Set Runner to Evaluation Mode:**
-    * In `config["runner"]`, set `is_training: False`.
-3.  **Set Low Epsilon for Agent:**
-    * Manually set the loaded agent's epsilon to a very small value to ensure it primarily exploits its learned policy:
-        ```python
-        agent.epsilon = 0.01 # Or lower
-        agent.epsilon_min = 0.01 
-        ```
-4.  Run the script.
+### 4.3. Loading a Trained Model and Running Evaluations
 
-### 3.3. Monitoring with TensorBoard
+1. **Create/Modify Evaluation Config:**
+    * Set `runner.is_training: false`.
+    * Set `runner.load_model_path` to the *directory* of the saved model.
+    * For `DQNAgent`, ensure `agent.params.network_config` in YAML matches the loaded model's architecture.
+2. **Execute:**
 
-1.  Ensure `tensorboard_log_dir` is set in your runner configuration.
-2.  While your experiment is running or after it has finished, open a new terminal.
-3.  Navigate to your project's root directory.
-4.  Run the command:
     ```bash
-    tensorboard --logdir ./logs 
+    python main.py --config=configs/your_eval_config_file.yaml
     ```
-    (Adjust `./logs` if your `tensorboard_log_dir` points elsewhere).
-5.  Open the URL provided by TensorBoard (usually `http://localhost:6006`) in your web browser.
 
-### 3.4. Adding a New Agent
+### 4.4. Pausing and Resuming Training
 
-1.  **Create Agent File:** In the `/agents` directory, create a new Python file (e.g., `my_new_agent.py`).
-2.  **Define Agent Class:**
-    ```python
-    from agents.abstractAgent import AbstractAgent
-    # Other necessary imports
+* **Current State:** Model weights are saved. Optimizer state, replay memory, episode/step counters, and current epsilon are **not** saved for exact resumption.
+* **Future Enhancement:**
+    1. **Saving:** Extend `agent.save_model` to include optimizer state, replay buffer, step/epsilon. `Runner` saves its own state.
+    2. **Loading:** Extend `agent.load_model` to restore these states. `main.py`/`Runner` restore runner state.
+    3. **YAML:** Add `runner.resume_checkpoint_path`.
 
-    class MyNewAgent(AbstractAgent):
-        def __init__(self, state_shape: tuple, action_shape: tuple, **kwargs: Any):
-            super().__init__(state_shape, action_shape)
-            # Initialize your agent's specific parameters, networks, etc.
-            # Example: self.my_parameter = kwargs.get('my_parameter', default_value)
+## 5. How to Modify or Extend
 
-        def get_action(self, state: Any) -> Any:
-            # Implement logic to select an action based on the state
-            pass
+### 5.1. Adding a New Agent
 
-        def update(self, state: Any, action: Any, reward: float, next_state: Any, done: bool, **kwargs: Any) -> float | None:
-            # Implement the learning/update rule for your algorithm
-            # Return new epsilon if applicable, else None
-            pass
+1. Create `agents/myNewAgent.py`, subclassing `AbstractAgent`.
+2. Implement all abstract methods.
+3. Register in `agents/factory.py`.
+4. Create YAML config.
 
-        def save_model(self, path: str, filename: str = "my_new_agent_model.pt") -> None:
-            # Implement logic to save your agent's learned parameters
-            pass
+### 5.2. Adding a New Environment
 
-        @classmethod
-        def load_model(cls, path: str, filename: str = "my_new_agent_model.pt", **kwargs: Any) -> 'MyNewAgent':
-            # Implement logic to load parameters and create an agent instance
-            # instance = cls(state_shape=kwargs['state_shape'], action_shape=kwargs['action_shape'], ...)
-            # Load weights into instance.
-            # return instance
-            pass
-    ```
-3.  **Create a Run Script:** Copy an existing `run_*.py` script, import your `MyNewAgent`, and modify the `config["agent"]` section to instantiate and configure your new agent.
+1. Create `env/myNewEnv.py`, subclassing `gym.Env`.
+2. Implement `gym.Env` methods and define spaces.
+3. Register in `env/factory.py`.
+4. Create YAML config.
 
-### 3.5. Adding a New Environment
+### 5.3. Adding a New Neural Network Architecture
 
-1.  **Create Environment File:** In the `/env` directory, create a new Python file (e.g., `my_new_env.py`).
-2.  **Define Environment Class:**
-    ```python
-    import gym
-    from pysc2.env import sc2_env
-    # Other necessary imports
-
-    class MyNewEnv(gym.Env):
-        def __init__(self, **kwargs: Any):
-            super().__init__()
-            # Initialize your PySC2 environment or other custom environment
-            # self._env = sc2_env.SC2Env(...)
-            
-            # Define action_space and observation_space (must be gym.spaces types)
-            # self.action_space = gym.spaces.Discrete(num_actions)
-            # self.observation_space = gym.spaces.Box(low=..., high=..., shape=..., dtype=...)
-
-        def reset(self) -> Any:
-            # Logic to reset the environment to an initial state
-            # Must return the initial observation
-            pass
-
-        def step(self, action: Any) -> Tuple[Any, float, bool, dict]:
-            # Logic to take an action in the environment
-            # Must return: next_observation, reward, done_flag, info_dict
-            pass
-
-        def close(self) -> None:
-            # Clean up environment resources
-            # if hasattr(self, '_env') and self._env is not None:
-            #     self._env.close()
-            super().close()
-
-        @property
-        def state_shape(self) -> tuple:
-            return self.observation_space.shape
-
-        @property
-        def action_shape(self) -> Any: # e.g., range for discrete, tuple for Box
-            if isinstance(self.action_space, gym.spaces.Discrete):
-                return range(self.action_space.n)
-            # Add handling for other space types if needed
-            return self.action_space.shape 
-    ```
-3.  **Use in Run Script:** Import your `MyNewEnv` in a run script and instantiate it in the `config["env"]` section.
-
-### 3.6. Tips for Further Development
-
-* **Hyperparameter Optimization:** Finding the right hyperparameters is key. Consider systematic approaches like grid search or random search if manual tuning becomes too slow. Tools like Optuna can automate this.
-* **Advanced DQN Variants:** Explore implementing extensions to DQN, such as:
-    * **Double DQN (DDQN):** Helps mitigate overestimation of Q-values.
-    * **Dueling DQN:** Separates the estimation of state values and action advantages.
-    * **Prioritized Experience Replay (PER):** Samples more important transitions from the replay buffer more frequently.
-* **Other Algorithms:** The `AbstractAgent` interface allows you to implement other RL algorithms (e.g., A2C, A3C, PPO) within the same framework.
-* **Different Environments:** Test your agents on other PySC2 mini-games or standard Gym environments (like CartPole, LunarLander) to see how well they generalize.
+1. Create your network class in `networks/architectures.py`, subclassing `networks.base.BaseNetwork`.
+2. Register in `networks/factory.py`.
+3. Use in YAML config under `agent.params.online_network_config`.

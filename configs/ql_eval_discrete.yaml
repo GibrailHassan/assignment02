@@ -1,0 +1,38 @@
+# Evaluates a pre-trained Q-Learning agent on the MoveToBeaconDiscreteEnv.
+
+experiment_name: "QLearning on MoveToBeacon (Discrete) - Evaluation"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconDiscreteEnv"
+  params:
+    distance_discrete_range: 10
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false # Set to true to watch evaluation
+
+# --- Agent Configuration ---
+agent:
+  name: "QLearningAgent"
+  params:
+    # These params are mainly for agent re-instantiation by load_model.
+    # The Q-table and epsilon will be loaded from the saved model.
+    # For evaluation, epsilon will be set to epsilon_min by the agent's load_model.
+    learning_rate: 0.1 # Placeholder, not used for learning during eval
+    discount_factor: 0.99 # Placeholder
+    initial_epsilon: 0.0 # Epsilon will be set by load_model
+    epsilon_decay: 0.0 # No decay during eval
+    epsilon_min: 0.01 # Agent will use this for exploitation
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 100 # Number of episodes for evaluation
+  is_training: false # CRITICAL: Set to false for evaluation mode
+
+  # Path to the directory containing the saved QLearningAgent model (q_table.pt).
+  # REPLACE with the actual path to your trained model directory.
+  load_model_path: "models/YOUR_TRAINED_QL_MODEL_DIRECTORY"
+
+  tensorboard_log_dir: "./logs_eval" # Separate log directory for evaluations
+  model_save_dir: "" # Do not save new models during evaluation
+  save_model_each_episode_num: 0 # Disable model saving

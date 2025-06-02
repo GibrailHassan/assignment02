@@ -1,26 +1,22 @@
-# utils/experiment_utils.py
-
 """
 Utility functions for managing and logging experiments, particularly with MLflow,
 and for setting up experiment components like configurations, agents, and networks.
 """
 
 import os
-import sys  # For sys.exit
 import yaml
-from typing import Dict, Any, Tuple  # Added Tuple
+from typing import Dict, Any
 
 import mlflow
 from torch.utils.tensorboard import SummaryWriter
 import gym
 
-# Assuming factories are correctly imported where these functions are called,
-# or we can pass them as arguments if we want to make utils even more generic.
-# For now, we'll import them here if directly used, or assume they are used by the caller (main.py).
+# Factories and Base Agent Class
 from agents.factory import create_agent as create_agent_from_factory, AGENT_REGISTRY
-from env.factory import create_environment as create_env_from_factory
+
+# from env.factory import create_environment as create_env_from_factory # Not used directly in this file
 from networks.factory import create_network as create_nn_from_factory
-from agents.abstractAgent import AbstractAgent  # For type hinting
+from agents.abstractAgent import AbstractAgent
 
 
 def flatten_dict_for_mlflow(
@@ -46,12 +42,6 @@ def flatten_dict_for_mlflow(
 def load_config(config_file_path: str) -> Dict[str, Any] | None:
     """
     Loads and parses a YAML configuration file.
-
-    Args:
-        config_file_path (str): The path to the YAML configuration file.
-
-    Returns:
-        Dict[str, Any] | None: The loaded configuration dictionary, or None if loading fails.
     """
     print(f"Loading configuration from: {config_file_path}")
     try:
@@ -70,18 +60,9 @@ def setup_mlflow_run(config: Dict[str, Any], config_file_path: str) -> str | Non
     """
     Initializes an MLflow experiment and run, logging configuration.
     To be called within a `with mlflow.start_run():` block.
-
-    Args:
-        config (Dict[str, Any]): The loaded YAML configuration dictionary.
-        config_file_path (str): The path to the YAML configuration file.
-
-    Returns:
-        str | None: The MLflow run ID if successful, otherwise None.
     """
     mlflow_experiment_name = config.get("experiment_name", "Default_RL_Experiment")
     try:
-        # Experiment setting should ideally be outside the run context if it needs creation,
-        # but set_experiment is idempotent.
         mlflow.set_experiment(mlflow_experiment_name)
         print(f"MLflow experiment set to: '{mlflow_experiment_name}'")
     except Exception as e:
@@ -98,7 +79,7 @@ def setup_mlflow_run(config: Dict[str, Any], config_file_path: str) -> str | Non
         return None
 
     mlflow_run_id = active_run.info.run_id
-    print(f"Logging to MLflow Run ID: {mlflow_run_id}")
+    # print(f"Logging to MLflow Run ID: {mlflow_run_id}") # main.py prints this
 
     try:
         mlflow.log_artifact(config_file_path, artifact_path="configs")
@@ -126,11 +107,14 @@ def setup_mlflow_run(config: Dict[str, Any], config_file_path: str) -> str | Non
     return mlflow_run_id
 
 
-def prepare_agent_networks_and_params(
-    agent_config_yaml: Dict[str, Any], env: gym.Env, is_training: bool
+def prepare_agent_constructor_params(
+    agent_config_yaml: Dict[str, Any],
+    env: gym.Env,
+    is_training: bool,  # Pass is_training explicitly
 ) -> Dict[str, Any]:
     """
-    Prepares agent parameters, including creating neural networks if specified in the config.
+    Prepares the dictionary of parameters for the agent's constructor.
+    This includes creating neural networks if specified in the agent's YAML config.
 
     Args:
         agent_config_yaml (Dict[str, Any]): The 'agent' section from the loaded YAML config.
@@ -138,28 +122,31 @@ def prepare_agent_networks_and_params(
         is_training (bool): Flag indicating if the agent is being set up for training.
 
     Returns:
-        Dict[str, Any]: Parameters ready to be passed to agent factory or load_model.
+        Dict[str, Any]: Parameters ready to be passed to the agent factory
+                        or the agent's load_model method's **kwargs.
     """
-    agent_params = agent_config_yaml.get("params", {}).copy()
-    agent_params["is_training"] = is_training  # Add/overwrite is_training status
+    agent_constructor_params = agent_config_yaml.get("params", {}).copy()
+    agent_constructor_params["is_training"] = is_training
 
     # Network Creation (if applicable, e.g., for DQNAgent)
-    online_network_config = agent_params.pop("online_network_config", None)
-    actor_network_config = agent_params.pop("actor_network_config", None)
-    critic_network_config = agent_params.pop("critic_network_config", None)
+    online_network_config = agent_constructor_params.pop("online_network_config", None)
+    actor_network_config = agent_constructor_params.pop("actor_network_config", None)
+    critic_network_config = agent_constructor_params.pop("critic_network_config", None)
 
     if online_network_config:
-        print(f"Creating online network: {online_network_config.get('name')}")
-        agent_params["online_network"] = create_nn_from_factory(
+        print(
+            f"Preparing online network from config: {online_network_config.get('name')}"
+        )
+        agent_constructor_params["online_network"] = create_nn_from_factory(
             name=online_network_config.get("name"),
             observation_space=env.observation_space,
             action_space=env.action_space,
             params=online_network_config.get("params", {}),
         )
         print(
-            f"Creating target network (identical to online): {online_network_config.get('name')}"
+            f"Preparing target network (identical to online): {online_network_config.get('name')}"
         )
-        agent_params["target_network"] = create_nn_from_factory(
+        agent_constructor_params["target_network"] = create_nn_from_factory(
             name=online_network_config.get("name"),
             observation_space=env.observation_space,
             action_space=env.action_space,
@@ -167,64 +154,73 @@ def prepare_agent_networks_and_params(
         )
 
     if actor_network_config:
-        print(f"Creating actor network: {actor_network_config.get('name')}")
-        agent_params["actor_network"] = create_nn_from_factory(
+        print(
+            f"Preparing actor network from config: {actor_network_config.get('name')}"
+        )
+        agent_constructor_params["actor_network"] = create_nn_from_factory(
             name=actor_network_config.get("name"),
             observation_space=env.observation_space,
             action_space=env.action_space,
             params=actor_network_config.get("params", {}),
         )
     if critic_network_config:
-        print(f"Creating critic network: {critic_network_config.get('name')}")
-        # Critic network might have a different action_space (e.g., outputting a single value)
-        # This needs to be handled based on the specific agent's needs.
-        # For a simple value critic, action_space might be Discrete(1).
-        critic_action_space = gym.spaces.Discrete(1)  # Example
-        agent_params["critic_network"] = create_nn_from_factory(
+        print(
+            f"Preparing critic network from config: {critic_network_config.get('name')}"
+        )
+        critic_action_space = gym.spaces.Discrete(1)
+        agent_constructor_params["critic_network"] = create_nn_from_factory(
             name=critic_network_config.get("name"),
             observation_space=env.observation_space,
             action_space=critic_action_space,
             params=critic_network_config.get("params", {}),
         )
 
-    # For loading a DQNAgent model, ensure network_config is available if needed by load_model
-    # This is for DQNAgent.load_model to reconstruct networks if they weren't passed directly.
+    # For loading a DQNAgent model, ensure 'network_config' is present in agent_constructor_params
+    # if it's needed by DQNAgent.load_model to reconstruct networks.
     agent_name = agent_config_yaml.get("name")
     if not is_training and agent_name == "DQNAgent":
-        if online_network_config and "network_config" not in agent_params:
-            agent_params["network_config"] = online_network_config
+        # If online_network_config was defined (meaning networks are part of this agent type)
+        # and network_config isn't already explicitly set in YAML's agent.params for loading.
+        if online_network_config and "network_config" not in agent_constructor_params:
+            agent_constructor_params["network_config"] = online_network_config
         elif (
-            "network_config" not in agent_params and online_network_config is None
-        ):  # Check if it's missing entirely
+            "network_config" not in agent_constructor_params
+            and online_network_config is None
+        ):
+            # This case might arise if loading a DQN model whose YAML didn't have online_network_config
+            # but load_model still needs network_config. This utility assumes network_config
+            # should be derived from online_network_config if not explicitly provided for loading.
             print(
-                "Warning: Attempting to load DQNAgent without 'network_config' or 'online_network_config' "
-                "in agent.params. DQNAgent.load_model might fail if it needs to reconstruct networks."
+                "Warning: Attempting to load DQNAgent. 'network_config' for model loading "
+                "was not found in agent.params and could not be derived from 'online_network_config'. "
+                "DQNAgent.load_model might fail if it needs to reconstruct networks."
             )
 
-    return agent_params
+    return agent_constructor_params
 
 
 def initialize_agent(
-    agent_config_yaml: Dict[str, Any],
-    env: gym.Env,
+    agent_name: str,  # Pass agent_name directly
     runner_config: Dict[str, Any],
-    prepared_agent_params: Dict[str, Any],
+    env: gym.Env,
+    agent_constructor_params: Dict[str, Any],  # Already contains networks if any
 ) -> AbstractAgent | None:
     """
     Creates a new agent or loads a pre-trained one.
 
     Args:
-        agent_config_yaml (Dict[str, Any]): The 'agent' section from YAML.
+        agent_name (str): The name of the agent (from YAML config).
+        runner_config (Dict[str, Any]): The 'runner' section from YAML (for load_model_path, is_training).
         env (gym.Env): The initialized environment.
-        runner_config (Dict[str, Any]): The 'runner' section from YAML.
-        prepared_agent_params (Dict[str, Any]): Agent parameters, potentially including networks.
+        agent_constructor_params (Dict[str, Any]): Agent parameters, including any pre-built networks.
 
     Returns:
         AbstractAgent | None: The initialized agent, or None on failure.
     """
-    agent_name = agent_config_yaml.get("name", "UnknownAgent")
     load_model_path = runner_config.get("load_model_path")
     is_training = runner_config.get("is_training", True)  # Get from runner_config
+
+    agent: AbstractAgent | None = None
 
     if not is_training and load_model_path:
         print(
@@ -240,41 +236,51 @@ def initialize_agent(
         agent_class = AGENT_REGISTRY[agent_name]
 
         try:
-            # Pass observation_space and action_space explicitly as they are fundamental
-            # prepared_agent_params already contains other hyperparams and potentially network_config
+            # Pass observation_space and action_space explicitly as they are fundamental for load_model
+            # agent_constructor_params already contains other hyperparams and potentially network_config
             agent = agent_class.load_model(
                 path=load_model_path,
                 observation_space=env.observation_space,
                 action_space=env.action_space,
-                **prepared_agent_params,
+                **agent_constructor_params,
             )
         except Exception as e:
             print(f"Error loading agent model: {e}")
             if mlflow.active_run():
                 mlflow.set_tag("run_status", "load_model_error")
                 mlflow.log_param("load_model_error_msg", str(e)[:250])
-            return None  # Propagate failure
+            return None
 
-        if hasattr(agent, "is_training"):
-            agent.is_training = False
-        if hasattr(agent, "epsilon") and hasattr(agent, "epsilon_min"):
-            agent.epsilon = agent.epsilon_min
-        print("Agent loaded successfully for evaluation.")
-    else:
-        print(f"Creating new agent: '{agent_name}' for training.")
-        agent = create_agent_from_factory(
-            name=agent_name,
-            params=prepared_agent_params,
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-        )
-        print("New agent created successfully for training.")
+        if agent:  # Ensure agent was loaded successfully
+            if hasattr(agent, "is_training"):
+                agent.is_training = False
+            if hasattr(agent, "epsilon") and hasattr(agent, "epsilon_min"):
+                agent.epsilon = agent.epsilon_min
+            print("Agent loaded successfully for evaluation.")
+    else:  # Training or evaluation without loading a model
+        mode = "training" if is_training else "evaluation (new instance)"
+        print(f"Creating new agent: '{agent_name}' for {mode}.")
+        try:
+            agent = create_agent_from_factory(
+                name=agent_name,
+                params=agent_constructor_params,
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+            )
+            print(f"New agent '{agent_name}' created successfully for {mode}.")
+        except Exception as e:
+            print(f"Error creating new agent '{agent_name}': {e}")
+            if mlflow.active_run():
+                mlflow.set_tag("run_status", "agent_creation_error")
+                mlflow.log_param("agent_creation_error_msg", str(e)[:250])
+            return None
+
     return agent
 
 
 def log_metrics_to_tensorboard(
     writer: SummaryWriter | None,
-    metrics: Dict[str, Any],  # Value can be Any, but only int/float logged
+    metrics: Dict[str, Any],
     episode_num: int,
     prefix: str = "",
 ) -> None:
@@ -287,15 +293,14 @@ def log_metrics_to_tensorboard(
 
 
 def log_metrics_to_mlflow(
-    metrics: Dict[str, Any],  # Value can be Any, but only int/float logged
-    episode_num: int,
-    prefix: str = "",
+    metrics: Dict[str, Any], episode_num: int, prefix: str = ""
 ) -> None:
     """Logs a dictionary of metrics to the active MLflow run."""
     if not mlflow.active_run():
         return
 
     try:
+        # Sanitize keys for MLflow (dots are ok, slashes might not be ideal)
         metrics_to_log = {
             f"{prefix}{key.replace('/', '_')}": value
             for key, value in metrics.items()

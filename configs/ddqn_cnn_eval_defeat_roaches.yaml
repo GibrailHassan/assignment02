@@ -1,0 +1,46 @@
+# Evaluates a pre-trained Double DQN (DDQN) agent with a CNN
+# on the DefeatRoachesEnv.
+
+experiment_name: "DDQN (CNN) on DefeatRoaches - Evaluation"
+
+# --- Environment Configuration ---
+environment:
+  name: "DefeatRoachesEnv"
+  params:
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false # Set to true to watch evaluation
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent" # Using the DQNAgent class
+  params:
+    # Agent algorithm parameters
+    enable_ddqn: true # CRITICAL: Must match the trained model's setting
+    learning_rate: 0.00025 # Placeholder
+    discount_factor: 0.99 # Placeholder
+    initial_epsilon: 0.0
+    epsilon_decay_rate: 0.0
+    epsilon_min: 0.01 # Epsilon for exploitation
+    target_update_freq: 1000 # Placeholder
+    memory_capacity: 1000 # Placeholder
+    batch_size: 128 # Placeholder
+
+    # --- Network Configuration ---
+    # CRITICAL: This MUST match the architecture of the saved model.
+    network_config:
+      name: "CNNNetwork" # Must be the same as used during training
+      params: {} # Or specific params if your trained DDQN CNN had custom ones
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 50 # Number of episodes for evaluation
+  is_training: false # CRITICAL: Set to false for evaluation mode
+
+  # Path to the directory containing the saved DDQN CNN model (dqn_online_nn.pt).
+  # REPLACE with the actual path to your trained model directory.
+  load_model_path: "models/YOUR_TRAINED_DDQN_CNN_DR_MODEL_DIRECTORY"
+
+  tensorboard_log_dir: "./logs_eval"
+  model_save_dir: ""
+  save_model_each_episode_num: 0

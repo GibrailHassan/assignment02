@@ -1,0 +1,49 @@
+# Evaluates a pre-trained Double DQN (DDQN) agent with a CNN
+# on the MoveToBeaconEnv (full visual features).
+
+experiment_name: "DDQN (CNN) on MoveToBeacon (Full Visual) - Evaluation"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconEnv"
+  params:
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false # Set to true to watch evaluation
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent" # Using the DQNAgent class
+  params:
+    # Agent algorithm parameters
+    enable_ddqn: true # CRITICAL: Must match the trained model's setting
+    learning_rate: 0.00025 # Placeholder, not used during evaluation
+    discount_factor: 0.99 # Placeholder
+    initial_epsilon: 0.0 # Epsilon will be set to epsilon_min by DQNAgent.load_model
+    epsilon_decay_rate: 0.0 # No decay during eval
+    epsilon_min: 0.01 # Epsilon used for exploitation
+    target_update_freq: 1000 # Placeholder
+    memory_capacity: 1000 # Placeholder (small for eval, not used)
+    batch_size: 32 # Placeholder (not used during eval for get_action)
+
+    # --- Network Configuration ---
+    # CRITICAL: This MUST match the architecture of the saved model.
+    # DQNAgent.load_model uses this to reconstruct the network before loading weights.
+    network_config:
+      name: "CNNNetwork" # Must be the same as used during training
+      params:
+        {} # Or specific params if your trained DDQN CNN had custom ones
+        # e.g., conv_channels: [32, 64, 64]
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 100 # Number of episodes for evaluation
+  is_training: false # CRITICAL: Set to false for evaluation mode
+
+  # Path to the directory containing the saved DDQN CNN model (dqn_online_nn.pt).
+  # REPLACE with the actual path to your trained model directory.
+  load_model_path: "models/YOUR_TRAINED_DDQN_CNN_MTBFULL_MODEL_DIRECTORY"
+
+  tensorboard_log_dir: "./logs_eval" # Separate log directory for evaluations
+  model_save_dir: "" # Do not save new models during evaluation
+  save_model_each_episode_num: 0 # Disable model saving

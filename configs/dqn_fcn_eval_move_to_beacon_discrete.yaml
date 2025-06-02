@@ -1,0 +1,50 @@
+# Evaluates a pre-trained DQN agent with an FCN/MLP
+# on the MoveToBeaconDiscreteEnv.
+
+experiment_name: "DQN (FCN/MLP) on MoveToBeacon (Discrete) - Evaluation"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconDiscreteEnv"
+  params:
+    distance_discrete_range: 10
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent"
+  params:
+    # Agent algorithm parameters (some are placeholders for load_model,
+    # but epsilon_min is used for evaluation mode).
+    enable_ddqn: false # Should match the trained model's setting
+    learning_rate: 0.001
+    discount_factor: 0.99
+    initial_epsilon: 0.0 # Agent will use epsilon_min
+    epsilon_decay_rate: 0.0 # No decay during eval
+    epsilon_min: 0.01 # Epsilon used for exploitation
+    target_update_freq: 1000 # Placeholder
+    memory_capacity: 1000 # Placeholder (small for eval)
+    batch_size: 32 # Placeholder
+
+    # --- Network Configuration ---
+    # CRITICAL: This MUST match the architecture of the saved model.
+    # DQNAgent.load_model uses this to reconstruct the network before loading weights.
+    network_config:
+      name: "MLPNetwork" # Must be the same as used during training
+      params:
+        hidden_layers: [64, 64] # Must be the same as used during training
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 100
+  is_training: false
+
+  # Path to the directory containing the saved DQNAgent model (dqn_online_nn.pt).
+  # REPLACE with the actual path to your trained model directory.
+  load_model_path: "models/YOUR_TRAINED_DQN_FCN_MTBD_MODEL_DIRECTORY"
+
+  tensorboard_log_dir: "./logs_eval"
+  model_save_dir: ""
+  save_model_each_episode_num: 0

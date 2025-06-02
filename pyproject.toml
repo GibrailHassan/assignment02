@@ -24,6 +24,7 @@ dependencies = [
     "torch",
     "PyYAML",
     "mlflow",
+    "plotly",
 ]
 
 [tool.uv.sources]

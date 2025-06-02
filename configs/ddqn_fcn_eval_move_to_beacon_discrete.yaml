@@ -1,0 +1,43 @@
+# Evaluates a pre-trained DDQN agent with an FCN/MLP
+# on the MoveToBeaconDiscreteEnv.
+
+experiment_name: "DDQN (FCN/MLP) on MoveToBeacon (Discrete) - Evaluation"
+
+# --- Environment Configuration ---
+environment:
+  name: "MoveToBeaconDiscreteEnv"
+  params:
+    distance_discrete_range: 10
+    screen_size: 32
+    step_mul: 8
+    is_visualize: false
+
+# --- Agent Configuration ---
+agent:
+  name: "DQNAgent" # Using DQNAgent class
+  params:
+    enable_ddqn: true # CRITICAL: Must match the trained model's setting
+    learning_rate: 0.001
+    discount_factor: 0.99
+    initial_epsilon: 0.0
+    epsilon_decay_rate: 0.0
+    epsilon_min: 0.01
+    target_update_freq: 1000
+    memory_capacity: 1000
+    batch_size: 32
+
+    # --- Network Configuration ---
+    # CRITICAL: This MUST match the architecture of the saved model.
+    network_config:
+      name: "MLPNetwork"
+      params:
+        hidden_layers: [64, 64] # Must be the same as used during training
+
+# --- Runner Configuration ---
+runner:
+  total_episodes: 100
+  is_training: false
+  load_model_path: "models/YOUR_TRAINED_DDQN_FCN_MTBD_MODEL_DIRECTORY"
+  tensorboard_log_dir: "./logs_eval"
+  model_save_dir: ""
+  save_model_each_episode_num: 0

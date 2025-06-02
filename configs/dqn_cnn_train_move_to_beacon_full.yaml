@@ -19,14 +19,14 @@ agent:
   params:
     # Agent-specific algorithm params
     enable_ddqn: false
-    learning_rate: 0.00025   # From original run_full_move_to_beacon.py
-    discount_factor: 0.99    # From original run_full_move_to_beacon.py
+    learning_rate: 0.00025   
+    discount_factor: 0.99    
     initial_epsilon: 1.0
     epsilon_decay_rate: 0.000009 # Linear decay: (1.0 - 0.1) / 100,000 steps
     epsilon_min: 0.1
-    target_update_freq: 1000 # From original run_full_move_to_beacon.py
-    memory_capacity: 100000  # From original run_full_move_to_beacon.py
-    batch_size: 32           # From original run_full_move_to_beacon.py
+    target_update_freq: 1000 
+    memory_capacity: 100000  
+    batch_size: 32           
     
     # --- Network Configuration ---
     online_network_config:
@@ -43,8 +43,8 @@ agent:
 
 # --- Runner Configuration ---
 runner:
-  total_episodes: 5000 # From original run_full_move_to_beacon.py
+  total_episodes: 10000 
   is_training: true
-  tensorboard_log_dir: "./logs/dqn_full_env" # From original run_full_move_to_beacon.py
+  tensorboard_log_dir: "./logs/dqn_full_env" 
   model_save_dir: "./models"
-  save_model_each_episode_num: 100 # From original run_full_move_to_beacon.py
+  save_model_each_episode_num: 100 
