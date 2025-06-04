@@ -1,0 +1,50 @@
+# configs/reinforce_mtb_discrete.yaml
+#
+# Configuration for training a REINFORCE agent on the MoveToBeaconDiscreteEnv.
+# This agent uses a policy network (e.g., MLPNetwork) to learn action probabilities.
+
+experiment_name: "REINFORCE on MoveToBeacon (Discrete)"
+
+# --- Environment Configuration ---
+# Specifies the environment to use and its parameters.
+environment:
+  name: "MoveToBeaconDiscreteEnv" # Environment with discretized state and action spaces
+  params:
+    distance_discrete_range: 10 # Range for state discretization
+    distance: 1 # Movement distance per step (used by env, not directly by agent logic here)
+    screen_size: 32 # Screen resolution
+    step_mul: 8 # Game steps per agent action
+    is_visualize: false # Set to true to watch training (slows down)
+
+# --- Agent Configuration ---
+# Specifies the REINFORCE agent and its hyperparameters.
+agent:
+  name: "REINFORCEAgent" # Must match the key in agents.factory.AGENT_REGISTRY
+  params:
+    # REINFORCE-specific algorithm parameters
+    learning_rate: 0.0005 # Learning rate for the policy network's optimizer
+    discount_factor: 0.99 # Gamma, discount factor for future rewards
+
+    # --- Policy Network Configuration ---
+    # This section defines the neural network to be used by the REINFORCEAgent as its policy.
+    # The `main.py` script will need to be adapted to look for 'policy_network_config'
+    # (similar to 'online_network_config' for DQNAgent) and pass the created network
+    # instance as 'policy_network' to the REINFORCEAgent constructor.
+    policy_network_config:
+      name: "MLPNetwork" # Registered name of the network architecture in networks.factory
+      params: # Parameters for the MLPNetwork constructor (from networks/architectures.py)
+        hidden_layers: [128, 128] # Example: Two hidden layers with 128 neurons each
+        # The input size will be determined from env.observation_space.shape.
+        # The output size will be determined from env.action_space.n (number of discrete actions).
+        # MLPNetwork by default outputs raw scores/logits; REINFORCEAgent will apply softmax.
+
+# --- Runner Configuration ---
+# Specifies parameters for the training loop.
+runner:
+  total_episodes: 2000 # Number of episodes to run for training
+  is_training: true # Must be true for training the REINFORCE agent
+
+  # Logging and Model Saving
+  tensorboard_log_dir: "./logs/reinforce_mtb_discrete" # Specific log directory
+  model_save_dir: "./models" # Base directory for saved models
+  save_model_each_episode_num: 200 # Frequency to save policy network checkpoints
