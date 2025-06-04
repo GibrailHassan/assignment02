@@ -1,16 +1,12 @@
-*.pyc
-_pycache__/
-.ipynb_checkpoints/
-
-# VS Code files for those working on multiple tools
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
-
-
-*.0
-
-poetry.lock
+# MLflow
+mlruns/
+/mlruns/
+**/mlruns/
+# Python
+__pycache__/
+**/__pycache__/
+# Logs
+*.log
+logs_eval/
+logs/
+**/logs/
